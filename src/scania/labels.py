@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .schema import TIME_STEP, VEHICLE_ID
+from .schema import LABEL_DTYPE, TIME_STEP, VEHICLE_ID
 
 WINDOW_EDGES = (6.0, 12.0, 24.0, 48.0)
 CUTS_PER_VEHICLE = 5
@@ -25,7 +25,7 @@ def label_cut_points(features: pd.DataFrame, tte: pd.DataFrame, seed: int = 0) -
         steps_to_class(steps_remaining).clip(0, 4),
         0,
     )
-    joined["class_label"] = label.astype("int8")
+    joined["class_label"] = label.astype(LABEL_DTYPE)
 
     # Validation and test cut each series at a randomly chosen readout, so sampling cut points
     # uniformly is what keeps the training class prior comparable to the evaluation prior.

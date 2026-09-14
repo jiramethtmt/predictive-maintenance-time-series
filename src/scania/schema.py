@@ -25,6 +25,9 @@ HISTOGRAM_BINS: dict[str, int] = {
 
 SPEC_COLUMNS: tuple[str, ...] = tuple(f"Spec_{i}" for i in range(8))
 
+# Training cut points and evaluation labels must agree, or AutoGluon warns and silently casts.
+LABEL_DTYPE = "int64"
+
 # IDA 2024 challenge cost matrix, rows = actual class, cols = predicted class.
 # Missing a real failure (rows 1-4 predicted as 0) costs 20-70x an unnecessary workshop check.
 COST_MATRIX: tuple[tuple[int, ...], ...] = (

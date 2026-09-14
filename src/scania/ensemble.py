@@ -50,6 +50,7 @@ def fit_predictor(
     tuning: pd.DataFrame,
     time_limit: int,
     presets: str,
+    compact: bool,
     bag_folds: int,
 ) -> TabularPredictor:
     predictor = TabularPredictor(
@@ -66,7 +67,7 @@ def fit_predictor(
         train_data=train,
         tuning_data=tuning,
         time_limit=time_limit,
-        presets=presets,
+        presets=[presets, "optimize_for_deployment"] if compact else presets,
         excluded_model_types=EXCLUDED_MODELS,
         **bagging,
     )

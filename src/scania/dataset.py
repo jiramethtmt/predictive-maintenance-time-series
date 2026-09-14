@@ -8,7 +8,7 @@ import pandas as pd
 from .features import attach_specifications, build_row_features
 from .io import load_split
 from .labels import label_cut_points, last_readout_per_vehicle
-from .schema import VEHICLE_ID
+from .schema import LABEL_DTYPE, VEHICLE_ID
 
 LABEL = "class_label"
 
@@ -33,7 +33,7 @@ def training_cut_points() -> pd.DataFrame:
 def evaluation_set(name: str) -> EvaluationSet:
     features, labels = split_features(name)
     cut = last_readout_per_vehicle(features)
-    truth = labels.set_index(VEHICLE_ID).loc[cut[VEHICLE_ID], LABEL].to_numpy().astype(int)
+    truth = labels.set_index(VEHICLE_ID).loc[cut[VEHICLE_ID], LABEL].to_numpy().astype(LABEL_DTYPE)
     return EvaluationSet(name=name, cut=cut, truth=truth)
 
 
