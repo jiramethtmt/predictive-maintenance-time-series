@@ -19,9 +19,8 @@ SELECTION_MISS_SCALE = 2.0
 # handed the majority of the time budget before a single tree model runs. On 93k tabular rows
 # the trees are what win, so the budget goes to them.
 EXCLUDED_MODELS: tuple[str, ...] = ("NN_TORCH", "FASTAI", "KNN")
-# ray is unavailable for this interpreter, so folds fit one after another; 4 keeps bagging's
-# variance reduction at half the wall clock of the default 8.
-BAG_FOLDS = 4
+# ray is unavailable for this interpreter, so bagged folds fit one after another and a bagged
+# preset spends its whole budget on the first model. Bagging is therefore opt-in, not default.
 
 
 def _negative_total_cost(y_true: np.ndarray, y_pred_proba: np.ndarray) -> float:
@@ -46,7 +45,13 @@ workshop_cost = make_scorer(
 )
 
 
-def fit_predictor(train: pd.DataFrame, tuning: pd.DataFrame, time_limit: int, presets: str) -> TabularPredictor:
+def fit_predictor(
+    train: pd.DataFrame,
+    tuning: pd.DataFrame,
+    time_limit: int,
+    presets: str,
+    bag_folds: int,
+) -> TabularPredictor:
     predictor = TabularPredictor(
         label=LABEL,
         problem_type="multiclass",
@@ -54,17 +59,16 @@ def fit_predictor(train: pd.DataFrame, tuning: pd.DataFrame, time_limit: int, pr
         path=str(MODEL_DIR),
         verbosity=2,
     )
+    bagging = {"num_bag_folds": bag_folds, "num_bag_sets": 1, "use_bag_holdout": True} if bag_folds else {}
     # Cut points from one vehicle are near-duplicates, so an internal random split would leak.
     # The real validation split is vehicle-disjoint by construction; hand it over as tuning_data.
     return predictor.fit(
         train_data=train,
         tuning_data=tuning,
-        use_bag_holdout=True,
         time_limit=time_limit,
         presets=presets,
         excluded_model_types=EXCLUDED_MODELS,
-        num_bag_folds=BAG_FOLDS,
-        num_bag_sets=1,
+        **bagging,
     )
 
 

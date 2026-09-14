@@ -27,7 +27,8 @@ def report(name: str, truth: np.ndarray, probabilities: np.ndarray, miss_scale: 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--time-limit", type=int, default=1800)
-    parser.add_argument("--presets", default="best_quality")
+    parser.add_argument("--presets", default="medium_quality")
+    parser.add_argument("--bag-folds", type=int, default=0)
     args = parser.parse_args()
 
     train = training_cut_points().drop(columns=[VEHICLE_ID])
@@ -35,7 +36,9 @@ def main() -> int:
     test = evaluation_set("test")
     print(f"train rows {len(train)}, classes {np.bincount(train[LABEL], minlength=5).tolist()}")
 
-    predictor = fit_predictor(train, labelled_frame(validation), args.time_limit, args.presets)
+    predictor = fit_predictor(
+        train, labelled_frame(validation), args.time_limit, args.presets, args.bag_folds
+    )
     print(predictor.leaderboard(labelled_frame(validation), silent=True).head(10))
 
     validation_proba = predict_all_classes(predictor, validation.cut.drop(columns=[VEHICLE_ID]))
