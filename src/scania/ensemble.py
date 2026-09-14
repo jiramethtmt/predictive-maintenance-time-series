@@ -65,6 +65,7 @@ def fit_predictor(
     time_limit: int,
     presets: str,
     compact: bool,
+    only: tuple[str, ...] = (),
 ) -> TabularPredictor:
     predictor = TabularPredictor(
         label=LABEL,
@@ -74,12 +75,16 @@ def fit_predictor(
         groups=FOLD,
         verbosity=2,
     )
+    # Bagging multiplies every model family by the fold count, so restricting the search to one
+    # family is what makes a trend check cheap enough to iterate on.
+    restriction = {"included_model_types": list(only)} if only else {}
     return predictor.fit(
         train_data=pool,
         time_limit=time_limit,
         presets=[presets, "optimize_for_deployment"] if compact else presets,
         excluded_model_types=EXCLUDED_MODELS,
         num_bag_folds=int(pool[FOLD].nunique()),
+        **restriction,
     )
 
 

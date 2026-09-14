@@ -31,12 +31,15 @@ def main() -> int:
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--compact", action="store_true")
+    parser.add_argument("--only", nargs="*", default=[], help="model families, e.g. GBM CAT XGB")
     args = parser.parse_args()
 
     pool = build_pool(args.seed, args.folds)
     print(f"pool rows {len(pool)}, classes {np.bincount(pool[LABEL], minlength=5).tolist()}")
 
-    predictor = fit_predictor(pool, args.time_limit, args.presets, args.compact)
+    predictor = fit_predictor(
+        pool, args.time_limit, args.presets, args.compact, tuple(args.only)
+    )
     print(predictor.leaderboard(silent=True).head(12).to_string())
 
     # Out-of-fold predictions cover every pooled row, so the decision rule is fitted on far more
