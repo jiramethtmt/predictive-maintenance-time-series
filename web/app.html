@@ -1,0 +1,746 @@
+<title>Component X Triage</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Condensed:wght@500;600;700&display=swap">
+<style>
+:root {
+  --ground: #E4E8EC;
+  --surface: #FCFCFB;
+  --surface-sunk: #EDF0F3;
+  --line: #C8D0D8;
+  --line-strong: #9AA7B4;
+  --ink: #141C24;
+  --ink-soft: #45525F;
+  --ink-mute: #6E7C8A;
+  --accent: #C2560E;
+  --accent-ink: #FFFFFF;
+  --series-1: #1C6FB5;
+  --series-2: #C2560E;
+  --series-3: #7A4FBF;
+  --series-4: #00806B;
+  --sev-0: #D9A257;
+  --sev-1: #C07B2F;
+  --sev-2: #A85F21;
+  --sev-3: #8A4416;
+  --sev-4: #65290C;
+  --good: #16664F;
+  --bad: #A3291B;
+  --shadow: 0 1px 2px rgba(20, 28, 36, .08), 0 8px 24px -12px rgba(20, 28, 36, .22);
+  --font-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0D141B;
+    --surface: #16202B;
+    --surface-sunk: #111A23;
+    --line: #263441;
+    --line-strong: #3C4D5D;
+    --ink: #E7ECF1;
+    --ink-soft: #AEBCC8;
+    --ink-mute: #7E8D9A;
+    --accent: #DB7430;
+    --accent-ink: #10181F;
+    --series-1: #3E8FD4;
+    --series-2: #DB7430;
+    --series-3: #9772DE;
+    --series-4: #1FA189;
+    --sev-0: #F8E2BC;
+    --sev-1: #E6BE83;
+    --sev-2: #D0954F;
+    --sev-3: #B56F2D;
+    --sev-4: #96491A;
+    --good: #4FBF97;
+    --bad: #E0705E;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0D141B;
+  --surface: #16202B;
+  --surface-sunk: #111A23;
+  --line: #263441;
+  --line-strong: #3C4D5D;
+  --ink: #E7ECF1;
+  --ink-soft: #AEBCC8;
+  --ink-mute: #7E8D9A;
+  --accent: #DB7430;
+  --accent-ink: #10181F;
+  --series-1: #3E8FD4;
+  --series-2: #DB7430;
+  --series-3: #9772DE;
+  --series-4: #1FA189;
+  --sev-0: #F8E2BC;
+  --sev-1: #E6BE83;
+  --sev-2: #D0954F;
+  --sev-3: #B56F2D;
+  --sev-4: #96491A;
+  --good: #4FBF97;
+  --bad: #E0705E;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 28px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.04; text-transform: uppercase; }
+h2 { font-size: 22px; text-transform: uppercase; letter-spacing: .04em; }
+h3 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+p { margin: 0; }
+.lede { max-width: 62ch; color: var(--ink-soft); }
+.eyebrow {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+header.masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 32px;
+  align-items: end;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 16px;
+}
+.plate {
+  font-family: var(--font-data);
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--ink-mute);
+  text-align: right;
+  white-space: nowrap;
+}
+.plate b { color: var(--ink); font-weight: 600; }
+
+.verdict {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.stat { background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 2px; }
+.stat .label { font-family: var(--font-data); font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-mute); }
+.stat .value { font-family: var(--font-display); font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat .foot { font-size: 12px; color: var(--ink-soft); }
+.stat.headline { background: var(--ink); }
+.stat.headline .label { color: color-mix(in srgb, var(--ground) 70%, transparent); }
+.stat.headline .value { color: var(--ground); }
+.stat.headline .foot { color: color-mix(in srgb, var(--ground) 82%, transparent); }
+.delta-good { color: var(--good); font-weight: 600; }
+.delta-bad { color: var(--bad); font-weight: 600; }
+
+section.panel { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.panel-head { padding: 14px 18px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; justify-content: space-between; }
+.panel-head p { font-size: 12.5px; color: var(--ink-mute); max-width: 58ch; }
+.panel-body { padding: 18px; display: flex; flex-direction: column; gap: 18px; }
+
+.bench { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 1px; background: var(--line); }
+.bench > div { background: var(--surface); padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+
+.control { display: flex; flex-direction: column; gap: 6px; }
+.control-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.control label { font-family: var(--font-data); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.control output { font-family: var(--font-data); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.control small { font-size: 11.5px; color: var(--ink-mute); }
+input[type="range"] { width: 100%; accent-color: var(--accent); height: 22px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button {
+  font-family: var(--font-data); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 7px 11px; border: 1px solid var(--line-strong); background: var(--surface-sunk);
+  color: var(--ink-soft); cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.seg button:focus-visible, .row:focus-visible, .ghost:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ghost { font-family: var(--font-data); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 7px 11px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-soft); cursor: pointer; }
+
+table.matrix { border-collapse: collapse; font-family: var(--font-data); font-size: 11.5px; font-variant-numeric: tabular-nums; width: 100%; }
+table.matrix caption { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); padding-bottom: 7px; }
+table.matrix th { font-weight: 500; color: var(--ink-mute); padding: 3px 5px; font-size: 10.5px; }
+table.matrix td { padding: 5px 4px; text-align: center; border: 1px solid var(--line); }
+table.matrix td.diag { color: var(--ink-mute); background: var(--surface-sunk); }
+table.matrix td.miss { color: var(--ink); font-weight: 600; }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+figcaption { font-size: 12px; color: var(--ink-mute); }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); }
+table.triage { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+table.triage th {
+  position: sticky; top: 0; background: var(--surface-sunk); text-align: left;
+  font-family: var(--font-data); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-mute); font-weight: 500; padding: 9px 12px; border-bottom: 1px solid var(--line);
+}
+table.triage td { padding: 9px 12px; border-bottom: 1px solid var(--line); }
+table.triage tbody tr { cursor: pointer; }
+table.triage tbody tr:hover { background: var(--surface-sunk); }
+table.triage tbody tr[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 13%, var(--surface)); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 11px; font-weight: 600; padding: 2px 8px; border: 1px solid var(--line-strong); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.risk-bar { display: block; height: 6px; background: var(--surface-sunk); position: relative; min-width: 60px; }
+.risk-bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 0 3px 3px 0; }
+
+.inspector { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 20px; }
+.prob-row { display: grid; grid-template-columns: 58px minmax(0, 1fr) 52px; gap: 9px; align-items: center; font-size: 12px; }
+.prob-track { height: 12px; background: var(--surface-sunk); }
+.prob-track i { display: block; height: 100%; border-radius: 0 2px 2px 0; }
+.smalls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.note { border-left: 3px solid var(--accent); padding-left: 13px; }
+.note h3 { margin-bottom: 3px; }
+.note p { font-size: 13px; color: var(--ink-soft); }
+footer { font-size: 12px; color: var(--ink-mute); border-top: 1px solid var(--line); padding-top: 14px; }
+a { color: var(--accent); }
+
+.tip {
+  position: fixed; pointer-events: none; z-index: 20; opacity: 0; transform: translate(-50%, -118%);
+  background: var(--ink); color: var(--ground); font-family: var(--font-data); font-size: 11.5px;
+  padding: 6px 9px; white-space: pre; transition: opacity .12s;
+}
+.tip.on { opacity: 1; }
+
+@media (max-width: 860px) {
+  .bench, .inspector { grid-template-columns: minmax(0, 1fr); }
+  header.masthead { grid-template-columns: minmax(0, 1fr); }
+  .plate { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">SCANIA Component X &middot; IDA 2024 challenge</p>
+      <h1>Which trucks go to the workshop today</h1>
+      <p class="lede">A gradient boosting model reads each truck's operating history up to its last
+        readout and scores how close Component X is to failing. The cost matrix below decides what
+        that score actually does. Move it and watch the fleet call change.</p>
+    </div>
+    <div class="plate" id="plate"></div>
+  </header>
+
+  <div class="verdict" id="verdict"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Policy bench</h2>
+      <p>Every number on this page is recomputed from the model's real probability vectors for all
+        5,045 test trucks. Nothing is precomputed for a fixed threshold.</p>
+    </div>
+    <div class="bench">
+      <div>
+        <div class="control">
+          <div class="control-top">
+            <label for="miss">Cost of missing a failure</label>
+            <output class="num" id="missOut"></output>
+          </div>
+          <input type="range" id="miss" min="0.1" max="4" step="0.1" value="1">
+          <small>Scales the lower triangle. Baseline 200 to 500 per truck that breaks down.</small>
+        </div>
+        <div class="control">
+          <div class="control-top">
+            <label for="check">Cost of a wasted check</label>
+            <output class="num" id="checkOut"></output>
+          </div>
+          <input type="range" id="check" min="0.1" max="12" step="0.1" value="1">
+          <small>Scales the upper triangle. Baseline 7 to 10 per truck pulled in for nothing.</small>
+        </div>
+        <div class="control">
+          <div class="control-top"><label>Decision rule</label></div>
+          <div class="seg" id="ruleSeg" role="group" aria-label="Decision rule">
+            <button type="button" data-rule="cost" aria-pressed="true">Min expected cost</button>
+            <button type="button" data-rule="argmax" aria-pressed="false">Most likely class</button>
+            <button type="button" data-rule="all4" aria-pressed="false">Check everything</button>
+            <button type="button" data-rule="all0" aria-pressed="false">Check nothing</button>
+          </div>
+          <small>The same probabilities, four different ways to act on them.</small>
+        </div>
+        <button type="button" class="ghost" id="reset">Reset to challenge costs</button>
+        <table class="matrix" id="costTable">
+          <caption>Cost matrix in force (rows actual, columns called)</caption>
+        </table>
+      </div>
+      <div>
+        <div class="charts">
+          <figure>
+            <h3>Total cost over the test fleet</h3>
+            <svg id="costChart" viewBox="0 0 420 190" role="img" aria-label="Total cost by policy"></svg>
+            <figcaption>Lower is better. Bars use the cost matrix currently set on the left.</figcaption>
+          </figure>
+          <figure>
+            <h3>What the call gets right</h3>
+            <svg id="confChart" viewBox="0 0 420 210" role="img" aria-label="Confusion matrix"></svg>
+            <figcaption>Rows are the truck's true window, columns what the policy called. Cells off the
+              diagonal below the line are missed failures.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Risk spread</h2>
+      <p>The model's probability that a truck is inside any failure window, against what actually
+        happened. <span id="atRiskNote"></span></p>
+    </div>
+    <div class="panel-body">
+      <figure>
+        <svg id="riskChart" viewBox="0 0 880 240" role="img" aria-label="Risk score distribution"></svg>
+        <div class="legend" id="riskLegend"></div>
+        <figcaption>Log-scaled counts: the healthy fleet outnumbers the at-risk trucks by 36 to 1, so a
+          linear axis would hide every bar that matters.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Triage list</h2>
+      <div class="seg" id="filterSeg" role="group" aria-label="Filter">
+        <button type="button" data-filter="alerted" aria-pressed="true">Called in</button>
+        <button type="button" data-filter="missed" aria-pressed="false">Missed failures</button>
+        <button type="button" data-filter="risk" aria-pressed="false">Highest risk</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="table-scroll">
+        <table class="triage">
+          <thead>
+            <tr>
+              <th scope="col">Truck</th>
+              <th scope="col">Risk</th>
+              <th scope="col">Called</th>
+              <th scope="col">Actual</th>
+              <th scope="col">Readouts</th>
+              <th scope="col">Last time step</th>
+            </tr>
+          </thead>
+          <tbody id="triageBody"></tbody>
+        </table>
+      </div>
+      <p class="eyebrow" id="triageCount"></p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Truck inspector</h2>
+      <p id="inspectorHint">Pick a row above. Trucks with a stored history show their raw cumulative
+        counters, which is what the model turns into wear rates.</p>
+    </div>
+    <div class="panel-body">
+      <div class="inspector">
+        <div>
+          <h3 id="inspectorTitle">No truck selected</h3>
+          <div id="probBars"></div>
+        </div>
+        <div class="smalls" id="trajectory"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="note">
+      <h3>Why not just take the likeliest class</h3>
+      <p>Only 2.7% of trucks are inside a failure window, so the most likely class is almost always
+        zero and the model never raises an alarm. Switch the rule above and the cost jumps straight
+        back to the do-nothing baseline.</p>
+    </div>
+    <div class="note">
+      <h3>Why checking everything is not stupid</h3>
+      <p>Under the challenge costs, sending the whole fleet in blind beats the do-nothing policy,
+        49,671 against 56,100. That is the bar a model has to clear, not accuracy.</p>
+    </div>
+    <div class="note">
+      <h3>What the model actually reads</h3>
+      <p>Cumulative counters converted to wear rates, six usage histograms normalised to shapes, how
+        irregularly the truck reports, and eight anonymised spec fields. No raw sensor names: Scania
+        released the data anonymised.</p>
+    </div>
+  </section>
+
+  <footer>
+    Data: SCANIA Component X, Scania CV AB, CC BY 4.0, via the Swedish National Data Service
+    (<a href="https://doi.org/10.5878/jvb5-d390">10.5878/jvb5-d390</a>). Model trained on cut points
+    sampled from the 18,639 training trucks that have telemetry, evaluated on the held-out test split.
+  </footer>
+</div>
+
+<div class="tip" id="tip" role="status"></div>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+const DATA = JSON.parse(document.getElementById("payload").textContent);
+const BASE = DATA.report.cost_matrix;
+const VEHICLES = DATA.vehicles;
+const TRAJ = DATA.trajectories;
+const CLASS_TEXT = ["clear", "48-24 steps", "24-12 steps", "12-6 steps", "0-6 steps"];
+const SEV = ["--sev-0", "--sev-1", "--sev-2", "--sev-3", "--sev-4"];
+const SERIES = ["--series-1", "--series-2", "--series-3", "--series-4"];
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const state = { miss: 1, check: 1, rule: "cost", filter: "alerted", selected: null };
+
+function costMatrix() {
+  return BASE.map((row, i) => row.map((v, j) => {
+    if (i === j) return 0;
+    return i > j ? v * state.miss : v * state.check;
+  }));
+}
+
+function decisions(C) {
+  const out = new Int8Array(VEHICLES.length);
+  for (let v = 0; v < VEHICLES.length; v++) {
+    const p = VEHICLES[v].p;
+    if (state.rule === "all4") { out[v] = 4; continue; }
+    if (state.rule === "all0") { out[v] = 0; continue; }
+    if (state.rule === "argmax") {
+      let best = 0;
+      for (let k = 1; k < 5; k++) if (p[k] > p[best]) best = k;
+      out[v] = best;
+      continue;
+    }
+    let best = 0, bestCost = Infinity;
+    for (let j = 0; j < 5; j++) {
+      let s = 0;
+      for (let i = 0; i < 5; i++) s += p[i] * C[i][j];
+      if (s < bestCost) { bestCost = s; best = j; }
+    }
+    out[v] = best;
+  }
+  return out;
+}
+
+function score(C, calls) {
+  const conf = Array.from({ length: 5 }, () => new Array(5).fill(0));
+  let cost = 0, alerts = 0, caught = 0, atRisk = 0;
+  for (let v = 0; v < VEHICLES.length; v++) {
+    const y = VEHICLES[v].y, j = calls[v];
+    conf[y][j]++;
+    cost += C[y][j];
+    if (j > 0) alerts++;
+    if (y > 0) { atRisk++; if (j > 0) caught++; }
+  }
+  return { conf, cost, alerts, caught, atRisk };
+}
+
+function policyCosts(C) {
+  const rules = { cost: null, argmax: null, all4: null, all0: null };
+  const saved = state.rule;
+  for (const key of Object.keys(rules)) {
+    state.rule = key;
+    rules[key] = score(C, decisions(C)).cost;
+  }
+  state.rule = saved;
+  return rules;
+}
+
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+const tip = document.getElementById("tip");
+function showTip(event, text) {
+  tip.textContent = text;
+  tip.style.left = event.clientX + "px";
+  tip.style.top = event.clientY + "px";
+  tip.classList.add("on");
+}
+function hideTip() { tip.classList.remove("on"); }
+function hoverable(node, text) {
+  node.addEventListener("pointermove", (e) => showTip(e, text));
+  node.addEventListener("pointerleave", hideTip);
+}
+
+function svgEl(name, attrs) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function renderVerdict(result, costs) {
+  const best = Math.min(costs.all0, costs.all4);
+  const saved = best - result.cost;
+  const pct = (saved / best) * 100;
+  const cards = [
+    {
+      cls: "headline",
+      label: "Total cost, test fleet",
+      value: fmt(result.cost),
+      foot: `<span class="${saved >= 0 ? "delta-good" : "delta-bad"}">${saved >= 0 ? "saves" : "loses"} ${fmt(Math.abs(saved))}</span> against the best trivial policy`
+    },
+    { label: "Per truck", value: (result.cost / VEHICLES.length).toFixed(1), foot: `across ${fmt(VEHICLES.length)} trucks` },
+    { label: "Called in", value: fmt(result.alerts), foot: `${((result.alerts / VEHICLES.length) * 100).toFixed(1)}% of the fleet` },
+    { label: "Failures caught", value: `${result.caught}/${result.atRisk}`, foot: `${((result.caught / result.atRisk) * 100).toFixed(0)}% of trucks genuinely at risk` },
+    { label: "Better than baseline", value: `${pct >= 0 ? "" : "-"}${Math.abs(pct).toFixed(1)}%`, foot: `baseline ${fmt(best)}` }
+  ];
+  document.getElementById("verdict").innerHTML = cards.map((c) => `
+    <div class="stat ${c.cls || ""}">
+      <span class="label">${c.label}</span>
+      <span class="value num">${c.value}</span>
+      <span class="foot">${c.foot}</span>
+    </div>`).join("");
+}
+
+function renderCostTable(C) {
+  const head = `<tr><th></th>${[0, 1, 2, 3, 4].map((j) => `<th scope="col">call ${j}</th>`).join("")}</tr>`;
+  const body = C.map((row, i) => `<tr><th scope="row">true ${i}</th>${row.map((v, j) => {
+    const kind = i === j ? "diag" : (i > j ? "miss" : "");
+    return `<td class="${kind}">${v === 0 ? "&middot;" : Math.round(v)}</td>`;
+  }).join("")}</tr>`).join("");
+  document.getElementById("costTable").innerHTML = `<caption>Cost matrix in force (rows actual, columns called)</caption>${head}${body}`;
+}
+
+function renderCostChart(costs) {
+  const svg = document.getElementById("costChart");
+  svg.textContent = "";
+  const rows = [
+    ["Model, min cost", costs.cost],
+    ["Most likely class", costs.argmax],
+    ["Check everything", costs.all4],
+    ["Check nothing", costs.all0]
+  ];
+  const max = Math.max(...rows.map((r) => r[1])) || 1;
+  const x0 = 132, w = 232, h = 26, gap = 12;
+  rows.forEach(([label, value], i) => {
+    const y = 16 + i * (h + gap);
+    svg.appendChild(Object.assign(svgEl("text", { x: x0 - 10, y: y + h / 2 + 4, "text-anchor": "end", fill: css("--ink-soft"), "font-size": "12", "font-family": "var(--font-body)" }), { textContent: label }));
+    svg.appendChild(svgEl("rect", { x: x0, y, width: w, height: h, fill: css("--surface-sunk") }));
+    const bw = Math.max(2, (value / max) * w);
+    const bar = svgEl("rect", { x: x0, y, width: bw, height: h, rx: 4, fill: label.startsWith("Model") ? css("--accent") : css("--line-strong") });
+    svg.appendChild(bar);
+    hoverable(bar, `${label}\n${fmt(value)}`);
+    const inside = bw > 78;
+    svg.appendChild(Object.assign(svgEl("text", {
+      x: inside ? x0 + bw - 8 : x0 + bw + 8, y: y + h / 2 + 4,
+      "text-anchor": inside ? "end" : "start",
+      fill: inside && label.startsWith("Model") ? css("--accent-ink") : css("--ink"),
+      "font-size": "12", "font-family": "var(--font-data)", "font-weight": "600"
+    }), { textContent: fmt(value) }));
+  });
+}
+
+function renderConfusion(conf) {
+  const svg = document.getElementById("confChart");
+  svg.textContent = "";
+  const cell = 60, x0 = 66, y0 = 34;
+  const max = Math.max(...conf.flat().map((v, i) => (Math.floor(i / 5) === i % 5 ? 0 : v)), 1);
+  svg.appendChild(Object.assign(svgEl("text", { x: x0 + cell * 2.5, y: 14, "text-anchor": "middle", fill: css("--ink-mute"), "font-size": "10.5", "font-family": "var(--font-data)", "letter-spacing": "1.4" }), { textContent: "CALLED" }));
+  for (let j = 0; j < 5; j++) {
+    svg.appendChild(Object.assign(svgEl("text", { x: x0 + j * cell + cell / 2, y: y0 - 6, "text-anchor": "middle", fill: css("--ink-mute"), "font-size": "11", "font-family": "var(--font-data)" }), { textContent: j }));
+  }
+  for (let i = 0; i < 5; i++) {
+    svg.appendChild(Object.assign(svgEl("text", { x: x0 - 8, y: y0 + i * cell + cell / 2 + 4, "text-anchor": "end", fill: css("--ink-mute"), "font-size": "11", "font-family": "var(--font-data)" }), { textContent: `true ${i}` }));
+    for (let j = 0; j < 5; j++) {
+      const value = conf[i][j];
+      const isDiag = i === j;
+      const intensity = isDiag ? 0 : Math.min(1, Math.sqrt(value / max));
+      const fill = isDiag
+        ? css("--surface-sunk")
+        : `color-mix(in srgb, ${i > j ? css("--bad") : css("--series-1")} ${8 + intensity * 62}%, ${css("--surface")})`;
+      const rect = svgEl("rect", { x: x0 + j * cell + 1, y: y0 + i * cell + 1, width: cell - 2, height: cell - 2, fill, stroke: css("--line"), "stroke-width": "1" });
+      svg.appendChild(rect);
+      hoverable(rect, `true ${i} (${CLASS_TEXT[i]})\ncalled ${j}\n${value} trucks${i > j ? "\nmissed failure" : ""}`);
+      if (value > 0) {
+        svg.appendChild(Object.assign(svgEl("text", {
+          x: x0 + j * cell + cell / 2, y: y0 + i * cell + cell / 2 + 4, "text-anchor": "middle",
+          fill: css("--ink"), "font-size": "12", "font-family": "var(--font-data)", "font-weight": intensity > .4 ? "600" : "400"
+        }), { textContent: value }));
+      }
+    }
+  }
+}
+
+function renderRisk() {
+  const svg = document.getElementById("riskChart");
+  svg.textContent = "";
+  const bins = 20;
+  const healthy = new Array(bins).fill(0);
+  const risky = new Array(bins).fill(0);
+  for (const v of VEHICLES) {
+    const risk = 1 - v.p[0];
+    const b = Math.min(bins - 1, Math.floor(risk * bins));
+    (v.y > 0 ? risky : healthy)[b]++;
+  }
+  const pad = { l: 52, r: 18, t: 16, b: 44 };
+  const W = 880, H = 240;
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const maxCount = Math.max(...healthy, ...risky, 1);
+  const scale = (n) => (n <= 0 ? 0 : (Math.log10(n + 1) / Math.log10(maxCount + 1)) * plotH);
+  const ticks = [1, 10, 100, 1000];
+  for (const t of ticks.filter((t) => t <= maxCount)) {
+    const y = pad.t + plotH - scale(t);
+    svg.appendChild(svgEl("line", { x1: pad.l, x2: W - pad.r, y1: y, y2: y, stroke: css("--line"), "stroke-width": "1" }));
+    svg.appendChild(Object.assign(svgEl("text", { x: pad.l - 8, y: y + 4, "text-anchor": "end", fill: css("--ink-mute"), "font-size": "11", "font-family": "var(--font-data)" }), { textContent: t }));
+  }
+  const bw = plotW / bins;
+  for (let b = 0; b < bins; b++) {
+    const groups = [[healthy[b], css("--series-1"), "never failed"], [risky[b], css("--series-2"), "inside a failure window"]];
+    groups.forEach(([count, color, name], k) => {
+      if (count === 0) return;
+      const h = Math.max(2, scale(count));
+      const x = pad.l + b * bw + 2 + k * ((bw - 6) / 2);
+      const rect = svgEl("rect", { x, y: pad.t + plotH - h, width: (bw - 6) / 2, height: h, rx: 2, fill: color });
+      svg.appendChild(rect);
+      hoverable(rect, `risk ${(b / bins).toFixed(2)} to ${((b + 1) / bins).toFixed(2)}\n${count} trucks ${name}`);
+    });
+  }
+  svg.appendChild(svgEl("line", { x1: pad.l, x2: W - pad.r, y1: pad.t + plotH, y2: pad.t + plotH, stroke: css("--line-strong"), "stroke-width": "1" }));
+  for (let b = 0; b <= bins; b += 4) {
+    svg.appendChild(Object.assign(svgEl("text", { x: pad.l + b * bw, y: pad.t + plotH + 18, "text-anchor": "middle", fill: css("--ink-mute"), "font-size": "11", "font-family": "var(--font-data)" }), { textContent: (b / bins).toFixed(1) }));
+  }
+  svg.appendChild(Object.assign(svgEl("text", { x: pad.l + plotW / 2, y: H - 8, "text-anchor": "middle", fill: css("--ink-mute"), "font-size": "11.5", "font-family": "var(--font-body)" }), { textContent: "model risk score, probability the truck is inside a failure window" }));
+  document.getElementById("riskLegend").innerHTML = [
+    ["--series-1", "Never failed"],
+    ["--series-2", "Inside a failure window"]
+  ].map(([c, t]) => `<span><i class="swatch" style="background:${css(c)}"></i>${t}</span>`).join("");
+}
+
+function renderTriage(calls) {
+  const rows = VEHICLES.map((v, i) => ({ ...v, call: calls[i], risk: 1 - v.p[0] }));
+  let list;
+  if (state.filter === "alerted") list = rows.filter((r) => r.call > 0).sort((a, b) => b.risk - a.risk);
+  else if (state.filter === "missed") list = rows.filter((r) => r.y > 0 && r.call === 0).sort((a, b) => b.risk - a.risk);
+  else list = rows.slice().sort((a, b) => b.risk - a.risk);
+  const shown = list.slice(0, 150);
+  document.getElementById("triageBody").innerHTML = shown.map((r) => `
+    <tr tabindex="0" data-id="${r.id}" aria-selected="${state.selected === r.id}">
+      <td class="num">${r.id}${TRAJ[r.id] ? ' <span title="full counter history stored" style="color:var(--accent)">&#9679;</span>' : ""}</td>
+      <td><span class="risk-bar"><i style="width:${Math.max(2, r.risk * 100).toFixed(1)}%"></i></span><span class="num" style="font-size:11px">${r.risk.toFixed(3)}</span></td>
+      <td><span class="pill"><i class="dot" style="background:${css(SEV[r.call])}"></i>${r.call}</span></td>
+      <td><span class="pill"><i class="dot" style="background:${css(SEV[r.y])}"></i>${r.y} ${CLASS_TEXT[r.y]}</span></td>
+      <td class="num">${r.n}</td>
+      <td class="num">${r.t.toFixed(1)}</td>
+    </tr>`).join("") || `<tr><td colspan="6" style="color:var(--ink-mute)">Nothing matches this filter under the current policy.</td></tr>`;
+  document.getElementById("triageCount").textContent = `showing ${shown.length} of ${list.length} matching trucks`;
+  for (const tr of document.querySelectorAll("#triageBody tr[data-id]")) {
+    const pick = () => selectVehicle(Number(tr.dataset.id));
+    tr.addEventListener("click", pick);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+  }
+}
+
+function renderSparkline(name, points, times, color) {
+  const W = 260, H = 96, pad = { l: 6, r: 6, t: 18, b: 18 };
+  const clean = points.map((v, i) => [times[i], v]).filter(([, v]) => v !== null);
+  if (clean.length < 2) return `<figure><h3>${name}</h3><figcaption>no reported values</figcaption></figure>`;
+  const xs = clean.map((d) => d[0]), ys = clean.map((d) => d[1]);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const sx = (x) => pad.l + ((x - xMin) / (xMax - xMin || 1)) * (W - pad.l - pad.r);
+  const sy = (y) => H - pad.b - ((y - yMin) / (yMax - yMin || 1)) * (H - pad.t - pad.b);
+  const d = clean.map(([x, y], i) => `${i ? "L" : "M"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("");
+  const last = clean[clean.length - 1];
+  return `<figure>
+    <h3>${name}</h3>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${name} over time">
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${sx(last[0]).toFixed(1)}" cy="${sy(last[1]).toFixed(1)}" r="4" fill="${color}"/>
+      <text x="${W - pad.r}" y="12" text-anchor="end" font-size="10.5" font-family="var(--font-data)" fill="${css("--ink-mute")}">${yMax.toLocaleString("en-US")}</text>
+      <text x="${pad.l}" y="${H - 4}" font-size="10.5" font-family="var(--font-data)" fill="${css("--ink-mute")}">t ${xMin.toFixed(0)}</text>
+      <text x="${W - pad.r}" y="${H - 4}" text-anchor="end" font-size="10.5" font-family="var(--font-data)" fill="${css("--ink-mute")}">t ${xMax.toFixed(0)}</text>
+    </svg>
+  </figure>`;
+}
+
+function selectVehicle(id) {
+  state.selected = id;
+  const v = VEHICLES.find((r) => r.id === id);
+  document.getElementById("inspectorTitle").textContent = `Truck ${id} · true class ${v.y} (${CLASS_TEXT[v.y]})`;
+  document.getElementById("probBars").innerHTML = v.p.map((p, k) => `
+    <div class="prob-row">
+      <span class="eyebrow">class ${k}</span>
+      <span class="prob-track"><i style="width:${(p * 100).toFixed(2)}%;background:${css(SEV[k])}"></i></span>
+      <span class="num" style="font-size:11.5px">${(p * 100).toFixed(2)}%</span>
+    </div>`).join("");
+  const traj = TRAJ[id];
+  const host = document.getElementById("trajectory");
+  if (!traj) {
+    host.innerHTML = `<p style="color:var(--ink-mute);font-size:13px">Raw history for this truck is not bundled with the page. Twelve trucks per class carry their full counter traces; the highest-risk rows in each class are the ones stored.</p>`;
+  } else {
+    host.innerHTML = Object.entries(traj.counters)
+      .map(([name, values], i) => renderSparkline(`counter ${name}`, values, traj.t, css(SERIES[i % SERIES.length])))
+      .join("");
+  }
+  for (const tr of document.querySelectorAll("#triageBody tr[data-id]")) {
+    tr.setAttribute("aria-selected", Number(tr.dataset.id) === id);
+  }
+}
+
+function refresh() {
+  const C = costMatrix();
+  const calls = decisions(C);
+  const result = score(C, calls);
+  const costs = policyCosts(C);
+  document.getElementById("missOut").textContent = `${state.miss.toFixed(1)}x`;
+  document.getElementById("checkOut").textContent = `${state.check.toFixed(1)}x`;
+  renderVerdict(result, costs);
+  renderCostTable(C);
+  renderCostChart(costs);
+  renderConfusion(result.conf);
+  renderTriage(calls);
+}
+
+document.getElementById("miss").addEventListener("input", (e) => { state.miss = Number(e.target.value); refresh(); });
+document.getElementById("check").addEventListener("input", (e) => { state.check = Number(e.target.value); refresh(); });
+document.getElementById("reset").addEventListener("click", () => {
+  state.miss = 1; state.check = 1; state.rule = "cost";
+  document.getElementById("miss").value = 1;
+  document.getElementById("check").value = 1;
+  for (const b of document.querySelectorAll("#ruleSeg button")) b.setAttribute("aria-pressed", b.dataset.rule === "cost");
+  refresh();
+});
+document.getElementById("ruleSeg").addEventListener("click", (e) => {
+  const button = e.target.closest("button");
+  if (!button) return;
+  state.rule = button.dataset.rule;
+  for (const b of document.querySelectorAll("#ruleSeg button")) b.setAttribute("aria-pressed", b === button);
+  refresh();
+});
+document.getElementById("filterSeg").addEventListener("click", (e) => {
+  const button = e.target.closest("button");
+  if (!button) return;
+  state.filter = button.dataset.filter;
+  for (const b of document.querySelectorAll("#filterSeg button")) b.setAttribute("aria-pressed", b === button);
+  refresh();
+});
+
+const val = DATA.report.splits.validation;
+const test = DATA.report.splits.test;
+document.getElementById("plate").innerHTML = `
+  test trucks <b class="num">${fmt(test.vehicles)}</b><br>
+  at risk <b class="num">${test.at_risk}</b> (<b class="num">${((test.at_risk / test.vehicles) * 100).toFixed(1)}%</b>)<br>
+  validation cost <b class="num">${fmt(val.total_cost)}</b> vs <b class="num">${fmt(val.best_baseline)}</b><br>
+  model HistGradientBoosting, <b class="num">5</b> classes`;
+document.getElementById("atRiskNote").textContent = `${test.at_risk} of ${fmt(test.vehicles)} trucks were genuinely at risk.`;
+
+renderRisk();
+refresh();
+const opener = VEHICLES.filter((v) => TRAJ[v.id]).sort((a, b) => (1 - b.p[0]) - (1 - a.p[0]))[0];
+if (opener) selectVehicle(opener.id);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderRisk(); refresh(); if (state.selected !== null) selectVehicle(state.selected); });
+</script>
