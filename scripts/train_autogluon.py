@@ -29,6 +29,7 @@ def main() -> int:
     parser.add_argument("--time-limit", type=int, default=1800)
     parser.add_argument("--presets", default="medium_quality")
     parser.add_argument("--bag-folds", type=int, default=0)
+    parser.add_argument("--compact", action="store_true", help="keep only the best model on disk")
     args = parser.parse_args()
 
     train = training_cut_points().drop(columns=[VEHICLE_ID])
@@ -37,7 +38,12 @@ def main() -> int:
     print(f"train rows {len(train)}, classes {np.bincount(train[LABEL], minlength=5).tolist()}")
 
     predictor = fit_predictor(
-        train, labelled_frame(validation), args.time_limit, args.presets, args.bag_folds
+        train,
+        labelled_frame(validation),
+        args.time_limit,
+        args.presets,
+        args.compact,
+        args.bag_folds,
     )
     print(predictor.leaderboard(labelled_frame(validation), silent=True).head(10))
 

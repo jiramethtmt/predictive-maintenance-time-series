@@ -24,8 +24,11 @@ rsync -az \
   "$LOCAL_DIR/data/raw/" "$HOST:$REMOTE_DIR/data/raw/"
 
 ssh "$HOST" "cd $REMOTE_DIR && docker build -f docker/Dockerfile -t scania-train ."
-ssh "$HOST" "cd $REMOTE_DIR && docker run --rm \
-  -v \$PWD/data:/app/data \
-  -v \$PWD/models:/app/models \
-  --cpus 8 --memory 9g \
-  scania-train ${*:---time-limit 1800 --presets best_quality --bag-folds 8}"
+
+# Docker needs an absolute host path, and $PWD would have to survive four levels of shell quoting.
+REMOTE_ABS="$(ssh "$HOST" "cd $REMOTE_DIR && pwd")"
+ssh "$HOST" "docker run --rm \
+  -v $REMOTE_ABS/data:/app/data \
+  -v $REMOTE_ABS/models:/app/models \
+  --cpus 8 --memory 11g \
+  scania-train ${*:---time-limit 3000 --presets best_quality --bag-folds 8}"
