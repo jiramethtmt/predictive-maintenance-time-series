@@ -73,6 +73,10 @@ def fit_predictor(
     )
 
 
+def load_predictor() -> TabularPredictor:
+    return TabularPredictor.load(str(MODEL_DIR), require_version_match=False)
+
+
 def predict_all_classes(predictor: TabularPredictor, features: pd.DataFrame) -> np.ndarray:
     proba = predictor.predict_proba(features)
     full = np.zeros((len(features), 5), dtype=float)
