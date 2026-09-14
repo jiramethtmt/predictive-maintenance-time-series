@@ -37,32 +37,41 @@ To regenerate and execute from the script:
 
 ## Model and web console
 
+The headline model is AutoGluon over LightGBM, trained on macmini-2 in the container (see
+`docker/`). Training cut points and the validation rows are pooled into one table;
+`StratifiedGroupKFold` assigns folds by `vehicle_id` so a vehicle's near-duplicate cut points never
+straddle a fold; AutoGluon bags over those folds and its `predict_proba_oof()` is what the decision
+rule is tuned on. Test is scored once at the end.
+
 ```bash
-.venv/Scripts/python scripts/train_model.py   # fits the classifier, writes web/data.json
-.venv/Scripts/python scripts/build_web.py     # inlines the payload into web/index.html
+docker/run-seeds.sh --only GBM --time-limit 900      # on macmini-2: three seeds, mean and spread
+.venv/Scripts/python scripts/build_web.py            # inlines web/data.json into web/index.html
 .venv/Scripts/python -m http.server 8777 --directory web
 ```
 
-`web/app.html` is the version-controlled page; `web/index.html` is the generated single-file
-build with the payload inlined, and is what you open.
-
-The model is a `HistGradientBoostingClassifier` over vehicle-level features taken at a cut
-point: counter wear rates (lifetime and 5-readout window), row-normalised histogram shapes
-plus per-family entropy and volume, reporting-gap statistics, and the eight spec categories.
-Training rows are five cut points sampled uniformly per training vehicle, which reproduces
-how validation and test truncate each series at a random readout and keeps the class prior
-comparable.
+Features are taken at a cut point: counter wear rates over 3/10/20-readout windows plus
+acceleration against the vehicle's lifetime rate, row-normalised histogram shapes with per-family
+entropy, drift against the first readout, reporting-gap statistics, and the eight spec categories.
 
 The decision rule is the Bayes action under the challenge loss: predict
 `argmin_j sum_i P(class=i) * Cost[i][j]`, not the most likely class.
 
-| Policy | Validation cost | Test cost |
-|---|---|---|
-| Model, cost rule at the tuned miss scale (2.0x) | **36,874** | **37,645** |
-| Same model, raw challenge matrix (untuned rule) | 39,660 | 40,687 |
-| Best trivial baseline (always class 4) | 49,566 | 49,671 |
-| Most likely class (argmax) | 57,400 | 56,100 |
-| Always class 0 | 57,400 | 56,100 |
+| Policy | Test cost |
+|---|---|
+| **AutoGluon LightGBM, pooled, OOF-tuned rule (3 seeds)** | **35,469 ± 849** |
+| HistGradientBoosting, single split, validation-tuned rule | 37,645 |
+| Best trivial baseline (always class 4, check every truck) | 49,671 |
+| Most likely class (argmax) | 56,100 |
+| Always class 0 (check nothing) | 56,100 |
+
+At the mean operating point the model catches 109 of the 142 at-risk trucks (recall 0.77) while
+calling in roughly 2,100 of 5,045. Checking every truck catches all 142 but costs 40% more.
+
+Seed-to-seed spread is the thing to watch: with a single held-out split and the rule tuned on its
+136 at-risk vehicles, test cost varied by std 1,668 across seeds, wider than most of the
+differences this repo's earlier experiments were chasing. Pooling validation into training and
+tuning on out-of-fold predictions halved that to 849. `scripts/measure_noise.py` reproduces the
+measurement.
 
 Argmax collapses onto the do-nothing policy: at a 2.7% positive rate the likeliest class is
 essentially always 0, so a model scored that way never raises an alarm. The web console lets
