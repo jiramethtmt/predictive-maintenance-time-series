@@ -25,9 +25,9 @@ def split_features(name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     return attach_specifications(build_row_features(split.readouts), split.specifications), split.labels
 
 
-def training_cut_points() -> pd.DataFrame:
+def training_cut_points(seed: int = 0) -> pd.DataFrame:
     features, tte = split_features("train")
-    return label_cut_points(features, tte)
+    return label_cut_points(features, tte, seed=seed)
 
 
 def evaluation_set(name: str) -> EvaluationSet:
