@@ -33,12 +33,14 @@ def label_cut_points(features: pd.DataFrame, tte: pd.DataFrame, seed: int = 0) -
     )
     joined["class_label"] = label.astype(LABEL_DTYPE)
 
-    # Validation and test cut each series at a randomly chosen readout, so sampling cut points
-    # uniformly is what keeps the training class prior comparable to the evaluation prior.
+    # Uniform sampling yields the positive classes in proportion to their window widths
+    # (24:12:6:6), roughly the inverse of the validation and test shape (which is weighted toward
+    # the imminent classes). Redrawing the positives to the evaluation shape, at the same row count
+    # and positive rate, made it worse (test 38,540 against 37,645), so the mismatch is real but is
+    # not what limits the model.
     shuffled = joined.sample(frac=1.0, random_state=seed)
     picked = shuffled.groupby(VEHICLE_ID, sort=False).head(CUTS_PER_VEHICLE)
     return picked.drop(columns=["length_of_study_time_step", "in_study_repair"])
-
 
 def last_readout_per_vehicle(features: pd.DataFrame) -> pd.DataFrame:
     return features.sort_values([VEHICLE_ID, TIME_STEP]).groupby(VEHICLE_ID, sort=False).tail(1)
