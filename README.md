@@ -58,7 +58,8 @@ The decision rule is the Bayes action under the challenge loss: predict
 
 | Policy | Validation cost | Test cost |
 |---|---|---|
-| Model, minimum expected cost | **39,846** | **42,649** |
+| Model, cost rule at the tuned miss scale (2.0x) | **36,083** | **39,307** |
+| Model, cost rule at the raw challenge matrix | 39,846 | 42,649 |
 | Best trivial baseline (always class 4) | 49,566 | 49,671 |
 | Most likely class (argmax) | 57,400 | 56,114 |
 | Always class 0 | 57,400 | 56,100 |
@@ -66,6 +67,16 @@ The decision rule is the Bayes action under the challenge loss: predict
 Argmax collapses onto the do-nothing policy: at a 2.7% positive rate the likeliest class is
 essentially always 0, so a model scored that way never raises an alarm. The web console lets
 you rescale the cost matrix and switch rules to watch that happen.
+
+At the tuned point the model catches 101 of 142 at-risk trucks (recall 0.71) at a precision of
+0.053. That precision is correct, not broken: a missed class-4 truck costs 500 and a wasted
+workshop check costs 10, so one real catch pays for 50 false alarms. Optimising for precision
+here destroys value.
+
+The remaining headroom is in ranking, not in the threshold. The top 100 trucks by risk score
+contain only 12 of the 142 at-risk trucks, so the model separates the population weakly and
+the cost rule compensates by alarming broadly. Better features or a censoring-aware target
+would move that; retuning the threshold would not.
 
 ## Package
 

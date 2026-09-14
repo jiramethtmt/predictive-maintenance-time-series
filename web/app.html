@@ -260,8 +260,10 @@ a { color: var(--accent); }
             <label for="miss">Cost of missing a failure</label>
             <output class="num" id="missOut"></output>
           </div>
-          <input type="range" id="miss" min="0.1" max="4" step="0.1" value="1">
-          <small>Scales the lower triangle. Baseline 200 to 500 per truck that breaks down.</small>
+          <input type="range" id="miss" min="0.1" max="12" step="0.1" value="2">
+          <small>Scales the lower triangle. Baseline 200 to 500 per truck that breaks down. The page
+            opens at the multiplier fitted on the validation split, which corrects the model's
+            under-confidence on the rare classes.</small>
         </div>
         <div class="control">
           <div class="control-top">
@@ -281,7 +283,7 @@ a { color: var(--accent); }
           </div>
           <small>The same probabilities, four different ways to act on them.</small>
         </div>
-        <button type="button" class="ghost" id="reset">Reset to challenge costs</button>
+        <button type="button" class="ghost" id="reset">Reset to tuned operating point</button>
         <table class="matrix" id="costTable">
           <caption>Cost matrix in force (rows actual, columns called)</caption>
         </table>
@@ -406,7 +408,8 @@ const SEV = ["--sev-0", "--sev-1", "--sev-2", "--sev-3", "--sev-4"];
 const SERIES = ["--series-1", "--series-2", "--series-3", "--series-4"];
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-const state = { miss: 1, check: 1, rule: "cost", filter: "alerted", selected: null };
+const TUNED_MISS = DATA.report.miss_scale;
+const state = { miss: TUNED_MISS, check: 1, rule: "cost", filter: "alerted", selected: null };
 
 function costMatrix() {
   return BASE.map((row, i) => row.map((v, j) => {
@@ -708,8 +711,8 @@ function refresh() {
 document.getElementById("miss").addEventListener("input", (e) => { state.miss = Number(e.target.value); refresh(); });
 document.getElementById("check").addEventListener("input", (e) => { state.check = Number(e.target.value); refresh(); });
 document.getElementById("reset").addEventListener("click", () => {
-  state.miss = 1; state.check = 1; state.rule = "cost";
-  document.getElementById("miss").value = 1;
+  state.miss = TUNED_MISS; state.check = 1; state.rule = "cost";
+  document.getElementById("miss").value = TUNED_MISS;
   document.getElementById("check").value = 1;
   for (const b of document.querySelectorAll("#ruleSeg button")) b.setAttribute("aria-pressed", b.dataset.rule === "cost");
   refresh();

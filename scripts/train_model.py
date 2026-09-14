@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from scania import COST_MATRIX, COUNTERS, TIME_STEP, VEHICLE_ID, load_split, total_cost  # noqa: E402
-from scania.decision import minimum_cost_decision  # noqa: E402
+from scania.decision import minimum_cost_decision, scaled_cost_matrix, tune_miss_scale  # noqa: E402
 from scania.features import attach_specifications, build_row_features  # noqa: E402
 from scania.labels import label_cut_points, last_readout_per_vehicle  # noqa: E402
 from scania.model import build_classifier, predict_all_classes, training_matrix  # noqa: E402
@@ -31,24 +31,28 @@ def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> list[list[int]]:
     return table.tolist()
 
 
-def evaluate(name: str, y_true: np.ndarray, probabilities: np.ndarray) -> dict:
-    y_pred = minimum_cost_decision(probabilities)
+def evaluate(name: str, y_true: np.ndarray, probabilities: np.ndarray, miss_scale: float) -> dict:
+    y_pred = minimum_cost_decision(probabilities, scaled_cost_matrix(miss_scale))
     cost = total_cost(y_true, y_pred)
-    baselines = {
-        f"always_{k}": total_cost(y_true, np.full_like(y_true, k)) for k in range(5)
-    }
+    baselines = {f"always_{k}": total_cost(y_true, np.full_like(y_true, k)) for k in range(5)}
     baselines["argmax"] = total_cost(y_true, probabilities.argmax(axis=1))
+    baselines["untuned"] = total_cost(y_true, minimum_cost_decision(probabilities))
+    alerted, at_risk = y_pred > 0, y_true > 0
+    caught = int((alerted & at_risk).sum())
     return {
         "split": name,
         "vehicles": int(len(y_true)),
+        "miss_scale": miss_scale,
         "total_cost": cost,
         "cost_per_vehicle": round(cost / len(y_true), 3),
         "baselines": baselines,
-        "best_baseline": min(baselines.values()),
+        "best_baseline": min(v for k, v in baselines.items() if k.startswith("always")),
         "confusion": confusion(y_true, y_pred),
-        "alerts": int((y_pred > 0).sum()),
-        "caught": int(((y_true > 0) & (y_pred > 0)).sum()),
-        "at_risk": int((y_true > 0).sum()),
+        "alerts": int(alerted.sum()),
+        "caught": caught,
+        "at_risk": int(at_risk.sum()),
+        "recall": round(caught / max(int(at_risk.sum()), 1), 4),
+        "precision": round(caught / max(int(alerted.sum()), 1), 4),
     }
 
 
@@ -78,9 +82,7 @@ def main() -> int:
     model.fit(x_train, y_train)
     print(f"fitted, iterations {model.n_iter_}")
 
-    report = {"classes": list(range(5)), "cost_matrix": [list(row) for row in COST_MATRIX], "splits": {}}
-    vehicle_records: list[dict] = []
-
+    scored = {}
     for split_name in ("validation", "test"):
         features, labels = prepare(split_name)
         cut = last_readout_per_vehicle(features)
@@ -91,27 +93,37 @@ def main() -> int:
             .to_numpy()
             .astype(int)
         )
-        report["splits"][split_name] = evaluate(split_name, truth, probabilities)
-        print(split_name, report["splits"][split_name]["total_cost"], report["splits"][split_name]["baselines"])
+        scored[split_name] = (cut, probabilities, truth)
 
-        if split_name == "test":
-            vehicle_records = [
-                {
-                    "id": int(vid),
-                    "y": int(actual),
-                    "p": [round(float(v), 5) for v in row],
-                    "t": round(float(t), 1),
-                    "n": int(n),
-                }
-                for vid, actual, row, t, n in zip(
-                    cut[VEHICLE_ID], truth, probabilities, cut[TIME_STEP], cut["readout_index"] + 1
-                )
-            ]
-            usage = {
-                c: [round(float(v), 3) for v in cut[f"{c}_rate_life"].fillna(0)] for c in COUNTERS
-            }
-            for index, record in enumerate(vehicle_records):
-                record["rates"] = {c: usage[c][index] for c in COUNTERS}
+    miss_scale, tuned_validation_cost = tune_miss_scale(*scored["validation"][1:])
+    print(f"miss scale tuned on validation: {miss_scale}x -> {tuned_validation_cost}")
+
+    report = {
+        "classes": list(range(5)),
+        "cost_matrix": [list(row) for row in COST_MATRIX],
+        "miss_scale": miss_scale,
+        "splits": {},
+    }
+    for split_name, (_, probabilities, truth) in scored.items():
+        summary = evaluate(split_name, truth, probabilities, miss_scale)
+        report["splits"][split_name] = summary
+        print(split_name, summary["total_cost"], summary["baselines"], "recall", summary["recall"])
+
+    cut, probabilities, truth = scored["test"]
+    usage = {c: [round(float(v), 3) for v in cut[f"{c}_rate_life"].fillna(0)] for c in COUNTERS}
+    vehicle_records = [
+        {
+            "id": int(vid),
+            "y": int(actual),
+            "p": [round(float(v), 5) for v in row],
+            "t": round(float(t), 1),
+            "n": int(n),
+            "rates": {c: usage[c][index] for c in COUNTERS},
+        }
+        for index, (vid, actual, row, t, n) in enumerate(
+            zip(cut[VEHICLE_ID], truth, probabilities, cut[TIME_STEP], cut["readout_index"] + 1)
+        )
+    ]
 
     by_class: dict[int, list[int]] = {k: [] for k in range(5)}
     for record in sorted(vehicle_records, key=lambda r: -max(r["p"][1:])):
