@@ -10,19 +10,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from scania import COST_MATRIX, COUNTERS, TIME_STEP, VEHICLE_ID, load_split, total_cost  # noqa: E402
 from scania.decision import minimum_cost_decision, scaled_cost_matrix, tune_miss_scale  # noqa: E402
-from scania.features import attach_specifications, build_row_features  # noqa: E402
-from scania.labels import label_cut_points, last_readout_per_vehicle  # noqa: E402
+from scania.dataset import evaluation_set, training_cut_points  # noqa: E402
 from scania.model import build_classifier, predict_all_classes, training_matrix  # noqa: E402
 
 WEB_DATA = ROOT / "web" / "data.json"
 TRAJECTORY_VEHICLES_PER_CLASS = 12
 TRAJECTORY_COUNTERS = ("171_0", "427_0", "835_0", "100_0")
 
-
-def prepare(split_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    split = load_split(split_name)
-    features = attach_specifications(build_row_features(split.readouts), split.specifications)
-    return features, split.labels
 
 
 def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> list[list[int]]:
@@ -73,8 +67,7 @@ def trajectories(split_name: str, keep: list[int]) -> dict[str, dict]:
 
 
 def main() -> int:
-    train_features, train_tte = prepare("train")
-    cut_points = label_cut_points(train_features, train_tte)
+    cut_points = training_cut_points()
     x_train, y_train = training_matrix(cut_points)
     print(f"train cut points {len(x_train)}, class counts {np.bincount(y_train, minlength=5).tolist()}")
 
@@ -84,16 +77,10 @@ def main() -> int:
 
     scored = {}
     for split_name in ("validation", "test"):
-        features, labels = prepare(split_name)
-        cut = last_readout_per_vehicle(features)
+        evaluation = evaluation_set(split_name)
+        cut = evaluation.cut
         probabilities = predict_all_classes(model, cut.drop(columns=[VEHICLE_ID]))
-        truth = (
-            labels.set_index(VEHICLE_ID)
-            .loc[cut[VEHICLE_ID], "class_label"]
-            .to_numpy()
-            .astype(int)
-        )
-        scored[split_name] = (cut, probabilities, truth)
+        scored[split_name] = (cut, probabilities, evaluation.truth)
 
     miss_scale, tuned_validation_cost = tune_miss_scale(*scored["validation"][1:])
     print(f"miss scale tuned on validation: {miss_scale}x -> {tuned_validation_cost}")

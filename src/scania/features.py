@@ -5,7 +5,8 @@ import pandas as pd
 
 from .schema import COUNTERS, HISTOGRAM_BINS, SPEC_COLUMNS, TIME_STEP, VEHICLE_ID, histogram_columns
 
-WINDOW = 5
+WINDOWS: tuple[int, ...] = (3, 10, 20)
+ACCELERATION_WINDOW = 3
 
 
 def _safe_divide(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
@@ -28,31 +29,39 @@ def build_row_features(readouts: pd.DataFrame) -> pd.DataFrame:
         "dt_mean": _safe_divide(elapsed, readout_index),
     }
 
-    window_dt = (t - grouped[TIME_STEP].shift(WINDOW)).astype("float32")
+    window_dt = {w: (t - grouped[TIME_STEP].shift(w)).astype("float32") for w in WINDOWS}
     for counter in COUNTERS:
         value = frame[counter]
+        life_rate = _safe_divide(value - grouped[counter].transform("first"), elapsed)
         columns[f"{counter}_last"] = value.astype("float32")
         columns[f"{counter}_per_t"] = _safe_divide(value, t)
-        columns[f"{counter}_rate_life"] = _safe_divide(
-            value - grouped[counter].transform("first"), elapsed
-        )
-        columns[f"{counter}_rate_w"] = _safe_divide(
-            value - grouped[counter].shift(WINDOW), window_dt
-        )
+        columns[f"{counter}_rate_life"] = life_rate
+        for w in WINDOWS:
+            rate = _safe_divide(value - grouped[counter].shift(w), window_dt[w])
+            columns[f"{counter}_rate_w{w}"] = rate
+            if w == ACCELERATION_WINDOW:
+                # Recent wear against the truck's own lifetime average: above 1 means this truck
+                # just started working harder than it ever has, which is the degradation signal
+                # the raw level cannot express.
+                columns[f"{counter}_accel"] = _safe_divide(rate, life_rate)
 
     for family, bins in HISTOGRAM_BINS.items():
         cols = histogram_columns(family)
         block = frame[cols]
         volume = block.sum(axis=1)
         shares = block.div(volume.where(volume > 0), axis=0).astype("float32")
+        baseline = shares.groupby(frame[VEHICLE_ID], sort=False).transform("first")
+        entropy = -(shares * np.log(shares.where(shares > 0))).sum(axis=1, skipna=True)
         columns[f"{family}_volume_log"] = np.log1p(volume).astype("float32")
         columns[f"{family}_reported"] = block[cols[0]].notna().astype("int8")
         # Bin shares are the "how it was used" signal; volume already lives in the counters.
         for i in range(bins):
             columns[f"{family}_s{i}"] = shares[cols[i]]
-        columns[f"{family}_entropy"] = (
-            -(shares * np.log(shares.where(shares > 0))).sum(axis=1, skipna=True).astype("float32")
-        )
+        columns[f"{family}_entropy"] = entropy.astype("float32")
+        columns[f"{family}_drift"] = (shares - baseline).abs().sum(axis=1, skipna=True).astype("float32")
+        columns[f"{family}_entropy_delta"] = (
+            entropy - entropy.groupby(frame[VEHICLE_ID], sort=False).transform("first")
+        ).astype("float32")
 
     return pd.concat(columns, axis=1)
 
