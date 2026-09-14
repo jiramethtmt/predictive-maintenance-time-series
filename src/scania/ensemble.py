@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 from autogluon.core.metrics import make_scorer
 from autogluon.tabular import TabularPredictor
+from sklearn.model_selection import StratifiedGroupKFold
 
 from .dataset import LABEL
 from .decision import minimum_cost_decision, scaled_cost_matrix
-from .schema import COST_MATRIX
+from .schema import COST_MATRIX, VEHICLE_ID
 
 MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "autogluon"
 # Model selection has to see the same asymmetry the workshop does. Selecting on log loss or
@@ -45,31 +46,40 @@ workshop_cost = make_scorer(
 )
 
 
+FOLD = "fold"
+
+
+def assign_folds(pool: pd.DataFrame, folds: int, seed: int) -> pd.Series:
+    # AutoGluon's `groups` column is the fold index, split with LeaveOneGroupOut, so the grouping
+    # by vehicle has to happen here: cut points from one vehicle are near-duplicates and must not
+    # straddle a fold boundary.
+    splitter = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=seed)
+    assignment = pd.Series(-1, index=pool.index, dtype="int32")
+    for fold, (_, held) in enumerate(splitter.split(pool, pool[LABEL], pool[VEHICLE_ID])):
+        assignment.iloc[held] = fold
+    return assignment
+
+
 def fit_predictor(
-    train: pd.DataFrame,
-    tuning: pd.DataFrame,
+    pool: pd.DataFrame,
     time_limit: int,
     presets: str,
     compact: bool,
-    bag_folds: int,
 ) -> TabularPredictor:
     predictor = TabularPredictor(
         label=LABEL,
         problem_type="multiclass",
         eval_metric=workshop_cost,
         path=str(MODEL_DIR),
+        groups=FOLD,
         verbosity=2,
     )
-    bagging = {"num_bag_folds": bag_folds, "num_bag_sets": 1, "use_bag_holdout": True} if bag_folds else {}
-    # Cut points from one vehicle are near-duplicates, so an internal random split would leak.
-    # The real validation split is vehicle-disjoint by construction; hand it over as tuning_data.
     return predictor.fit(
-        train_data=train,
-        tuning_data=tuning,
+        train_data=pool,
         time_limit=time_limit,
         presets=[presets, "optimize_for_deployment"] if compact else presets,
         excluded_model_types=EXCLUDED_MODELS,
-        **bagging,
+        num_bag_folds=int(pool[FOLD].nunique()),
     )
 
 
