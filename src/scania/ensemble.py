@@ -15,6 +15,13 @@ MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "autogluon"
 # Model selection has to see the same asymmetry the workshop does. Selecting on log loss or
 # accuracy picks the model that never alarms, which is exactly the failure mode being fixed.
 SELECTION_MISS_SCALE = 2.0
+# Without ray installed AutoGluon fits bagged folds sequentially, and the neural families are
+# handed the majority of the time budget before a single tree model runs. On 93k tabular rows
+# the trees are what win, so the budget goes to them.
+EXCLUDED_MODELS: tuple[str, ...] = ("NN_TORCH", "FASTAI", "KNN")
+# ray is unavailable for this interpreter, so folds fit one after another; 4 keeps bagging's
+# variance reduction at half the wall clock of the default 8.
+BAG_FOLDS = 4
 
 
 def _negative_total_cost(y_true: np.ndarray, y_pred_proba: np.ndarray) -> float:
@@ -55,6 +62,9 @@ def fit_predictor(train: pd.DataFrame, tuning: pd.DataFrame, time_limit: int, pr
         use_bag_holdout=True,
         time_limit=time_limit,
         presets=presets,
+        excluded_model_types=EXCLUDED_MODELS,
+        num_bag_folds=BAG_FOLDS,
+        num_bag_sets=1,
     )
 
 
