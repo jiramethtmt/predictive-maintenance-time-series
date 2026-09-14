@@ -15,6 +15,14 @@ def _safe_divide(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
 
 def build_row_features(readouts: pd.DataFrame) -> pd.DataFrame:
     frame = readouts.sort_values([VEHICLE_ID, TIME_STEP], ignore_index=True)
+    # Missing readouts arrive a whole histogram family at a time, which is a sensor that stopped
+    # reporting rather than a stray null. Every measured column is cumulative, so carrying the last
+    # reported value forward along the vehicle's own series is the faithful fill; the `_reported`
+    # flags below still carry the fact that it was absent.
+    measured = list(COUNTERS) + [c for f in HISTOGRAM_BINS for c in histogram_columns(f)]
+    reported = frame[measured].notna()
+    filled = frame.groupby(VEHICLE_ID, sort=False)[measured].ffill()
+    frame[measured] = filled.groupby(frame[VEHICLE_ID], sort=False).bfill()
     grouped = frame.groupby(VEHICLE_ID, sort=False)
     t = frame[TIME_STEP]
 
@@ -53,7 +61,7 @@ def build_row_features(readouts: pd.DataFrame) -> pd.DataFrame:
         baseline = shares.groupby(frame[VEHICLE_ID], sort=False).transform("first")
         entropy = -(shares * np.log(shares.where(shares > 0))).sum(axis=1, skipna=True)
         columns[f"{family}_volume_log"] = np.log1p(volume).astype("float32")
-        columns[f"{family}_reported"] = block[cols[0]].notna().astype("int8")
+        columns[f"{family}_reported"] = reported[cols[0]].astype("int8")
         # Bin shares are the "how it was used" signal; volume already lives in the counters.
         for i in range(bins):
             columns[f"{family}_s{i}"] = shares[cols[i]]

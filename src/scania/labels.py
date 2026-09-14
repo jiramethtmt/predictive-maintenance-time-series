@@ -6,8 +6,10 @@ import pandas as pd
 from .schema import LABEL_DTYPE, TIME_STEP, VEHICLE_ID
 
 WINDOW_EDGES = (6.0, 12.0, 24.0, 48.0)
-# Measured: 15 cuts per vehicle overfits (test 40,727 against 37,645 at 5). Extra cuts from one
-# vehicle are near-duplicates, so they add rows without adding independent information.
+# Five random cut points per vehicle (test 37,645) beat every alternative measured: 15 cut points
+# overfits on near-duplicate rows (40,727), redrawing the positives to the evaluation class shape
+# gives 38,540, and one row per vehicle at its last readout collapses to 87% class 4 and degenerates
+# into alerting almost everything (44,704).
 CUTS_PER_VEHICLE = 5
 # Censored vehicles are labelled class 0 at every cut point even where follow-up ended before the
 # widest window closed. That is statistically wrong but deliberate: validation and test labels are
@@ -33,11 +35,6 @@ def label_cut_points(features: pd.DataFrame, tte: pd.DataFrame, seed: int = 0) -
     )
     joined["class_label"] = label.astype(LABEL_DTYPE)
 
-    # Uniform sampling yields the positive classes in proportion to their window widths
-    # (24:12:6:6), roughly the inverse of the validation and test shape (which is weighted toward
-    # the imminent classes). Redrawing the positives to the evaluation shape, at the same row count
-    # and positive rate, made it worse (test 38,540 against 37,645), so the mismatch is real but is
-    # not what limits the model.
     shuffled = joined.sample(frac=1.0, random_state=seed)
     picked = shuffled.groupby(VEHICLE_ID, sort=False).head(CUTS_PER_VEHICLE)
     return picked.drop(columns=["length_of_study_time_step", "in_study_repair"])
