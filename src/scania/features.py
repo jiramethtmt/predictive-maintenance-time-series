@@ -17,12 +17,12 @@ def build_row_features(readouts: pd.DataFrame) -> pd.DataFrame:
     frame = readouts.sort_values([VEHICLE_ID, TIME_STEP], ignore_index=True)
     # Missing readouts arrive a whole histogram family at a time, which is a sensor that stopped
     # reporting rather than a stray null. Every measured column is cumulative, so carrying the last
-    # reported value forward along the vehicle's own series is the faithful fill; the `_reported`
-    # flags below still carry the fact that it was absent.
+    # reported value forward is the faithful fill; the `_reported` flags below still carry the fact
+    # that it was absent. Forward only: a backward fill would let a cut point see readouts that
+    # come after it, which inference never can because the series is truncated there.
     measured = list(COUNTERS) + [c for f in HISTOGRAM_BINS for c in histogram_columns(f)]
     reported = frame[measured].notna()
-    filled = frame.groupby(VEHICLE_ID, sort=False)[measured].ffill()
-    frame[measured] = filled.groupby(frame[VEHICLE_ID], sort=False).bfill()
+    frame[measured] = frame.groupby(VEHICLE_ID, sort=False)[measured].ffill()
     grouped = frame.groupby(VEHICLE_ID, sort=False)
     t = frame[TIME_STEP]
 
