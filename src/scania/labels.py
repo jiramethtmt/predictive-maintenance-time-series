@@ -9,6 +9,10 @@ WINDOW_EDGES = (6.0, 12.0, 24.0, 48.0)
 # Measured: 15 cuts per vehicle overfits (test 40,727 against 37,645 at 5). Extra cuts from one
 # vehicle are near-duplicates, so they add rows without adding independent information.
 CUTS_PER_VEHICLE = 5
+# Censored vehicles are labelled class 0 at every cut point even where follow-up ended before the
+# widest window closed. That is statistically wrong but deliberate: validation and test labels are
+# built the same way, so dropping those rows only desynchronises training from how it is scored
+# (measured: test 39,539 against 37,645).
 
 
 def steps_to_class(steps_remaining: np.ndarray) -> np.ndarray:
