@@ -30,7 +30,6 @@ def main() -> int:
     parser.add_argument("--presets", default="medium_quality")
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--compact", action="store_true")
     parser.add_argument("--only", nargs="*", default=[], help="model families, e.g. GBM CAT XGB")
     args = parser.parse_args()
 
@@ -38,7 +37,7 @@ def main() -> int:
     print(f"pool rows {len(pool)}, classes {np.bincount(pool[LABEL], minlength=5).tolist()}")
 
     predictor = fit_predictor(
-        pool, args.time_limit, args.presets, args.compact, tuple(args.only)
+        pool, args.time_limit, args.presets, tuple(args.only)
     )
     print(predictor.leaderboard(silent=True).head(12).to_string())
 

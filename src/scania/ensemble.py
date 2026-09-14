@@ -64,7 +64,8 @@ def fit_predictor(
     pool: pd.DataFrame,
     time_limit: int,
     presets: str,
-    compact: bool,
+    # No `optimize_for_deployment` here: its save_space step deletes models/autogluon/utils/data,
+    # which is exactly what predict_proba_oof() reads back.
     only: tuple[str, ...] = (),
 ) -> TabularPredictor:
     predictor = TabularPredictor(
@@ -81,7 +82,7 @@ def fit_predictor(
     return predictor.fit(
         train_data=pool,
         time_limit=time_limit,
-        presets=[presets, "optimize_for_deployment"] if compact else presets,
+        presets=presets,
         excluded_model_types=EXCLUDED_MODELS,
         num_bag_folds=int(pool[FOLD].nunique()),
         **restriction,
