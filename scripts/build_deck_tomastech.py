@@ -23,6 +23,14 @@ BLUE, CYAN, INK, MUT, NAVY, SURFACE, WHITE = HT.BLUE, HT.CYAN, HT.INK, HT.MUT, H
 S = D.slides
 
 
+def drop_empty_placeholders(s):
+    # A repurposed template slide keeps its placeholders; an empty one renders the
+    # layout's sample prompt text on top of the composed content.
+    for shape in list(s.shapes):
+        if shape.is_placeholder and shape.has_text_frame and not shape.text_frame.text.strip():
+            shape._element.getparent().remove(shape._element)
+
+
 def link_block(s, y, label, caption, url):
     HT.blk(s, 0.7, y, 11.9, 1.15, SURFACE)
     HT.blk(s, 0.7, y, 0.16, 1.15, CYAN)
@@ -51,6 +59,7 @@ if detail:
     para(tf, "SCANIA Component X, 33,000 trucks, IDA 2024 challenge cost matrix. Three-seed result.", 12, False, MUT, 0)
 
 s = HT.content("What the model is asked", 2, slide=S[1])
+drop_empty_placeholders(s)
 HT.headline(s, "One truck, one decision.", y=1.15, size=34, color=INK)
 HT.numbered_rows(s, [
     ("What we predict", "How close the monitored component is to failure, using only the readouts that truck has already sent home."),
@@ -59,6 +68,7 @@ HT.numbered_rows(s, [
 ], y0=2.25)
 
 s = HT.content("Why accuracy is the wrong target", 3, slide=S[2])
+drop_empty_placeholders(s)
 HT.headline(s, "The economics pick the model.", y=1.15, size=34, color=INK)
 HT.block_grid(s, [
     ("Missing a failure costs 500", "The truck fails in service. This is the number the whole design is built around."),
