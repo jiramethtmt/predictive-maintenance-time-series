@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from pptx import Presentation
@@ -169,7 +170,7 @@ def title_slide(deck):
     return slide
 
 
-def build():
+def build(out=OUT):
     deck = Presentation()
     deck.slide_width, deck.slide_height = W, H
 
@@ -243,28 +244,32 @@ def build():
         ],
     )
 
-    slide = slide_of(deck, "Benchmark", "Against the published results on this dataset", 6)
+    slide = slide_of(deck, "Benchmark", "Every published result on this dataset", 6)
     table(
         slide,
         CONTENT_TOP,
         ["Approach", "Test cost"],
         [
-            ["This work, AutoGluon LightGBM (3 seeds)", "35,469 \u00b1 849"],
-            ["Published CatBoost result on the same benchmark", "36,724"],
-            ["Trivial baseline, check every truck", "49,671"],
+            ["Our work, AutoGluon LightGBM (3 seeds)", "35,469 \u00b1 849"],
+            ["CatBoost, empirical study (arXiv 2606.12486)", "36,724"],
+            ["XGBoost, same empirical study headline", "37,733"],
+            ["Bi-LSTM, Zhong and Wang, IDA 2024", "39,123"],
+            ["GNN on signature-augmented graphs, Parton et al., IDA 2024", "47,612"],
+            ["XGBoost, Carpentier et al., IDA 2024, level with checking every truck", "49,671"],
         ],
         [0.72, 0.28],
         highlight=1,
     )
     bullets(
         slide,
-        CONTENT_TOP + Inches(2.3),
+        CONTENT_TOP + Inches(3.35),
         [
-            ("The gap is 1,255, wider than our own seed spread of 849.", ""),
-            ("Read it as level or slightly ahead, not a clear win.", "The published figure does not state how many runs it averages, so the two spreads are not directly comparable."),
+            ("The two deep models on this benchmark, one sequence and one graph, both sit behind boosted trees.", ""),
+            ("Part of that gap is the decision rule, not the architecture.", "Our own model costs 56,100 when scored by most-likely-class and 35,469 under the cost-optimal rule."),
         ],
+        size=14,
+        gap=8,
     )
-
     slide = slide_of(deck, "Confidence", "Why this number is reportable", 7)
     bullets(
         slide,
@@ -340,10 +345,10 @@ def build():
         ],
     )
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    deck.save(OUT)
-    return OUT
+    out.parent.mkdir(parents=True, exist_ok=True)
+    deck.save(out)
+    return out
 
 
 if __name__ == "__main__":
-    print(build())
+    print(build(Path(sys.argv[1]) if len(sys.argv) > 1 else OUT))
