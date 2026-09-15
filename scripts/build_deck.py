@@ -244,7 +244,7 @@ def build(out=OUT):
         ],
     )
 
-    slide = slide_of(deck, "Benchmark", "Every published result on this dataset", 6)
+    slide = slide_of(deck, "Benchmark", "Against the published results on this dataset", 6)
     table(
         slide,
         CONTENT_TOP,
@@ -253,22 +253,21 @@ def build(out=OUT):
             ["Our work, AutoGluon LightGBM (3 seeds)", "35,469 \u00b1 849"],
             ["CatBoost, same study, best row read off the test set", "36,724"],
             ["XGBoost, empirical study, the model they actually selected", "37,733"],
-            ["Bi-LSTM, Zhong and Wang, IDA 2024", "39,123"],
-            ["GNN, Parton et al., IDA 2024", "47,612"],
-            ["XGBoost, Carpentier et al., IDA 2024, level with checking every truck", "49,671"],
+            ["XGBoost, Carpentier et al., level with checking every truck", "49,671"],
         ],
         [0.72, 0.28],
         highlight=1,
     )
     bullets(
         slide,
-        CONTENT_TOP + Inches(3.35),
+        CONTENT_TOP + Inches(2.5),
         [
-            ("The honest target is 37,733, the model the leading study selected on validation.", "We are 2,264 ahead of it, and that margin is wider than our own seed spread."),
-            ("No published entry states how it converts probabilities into a decision,", "and on our own model that choice is worth 20,631, more than the whole spread of this table."),
+            ("The target is 37,733, the model the leading study selected on validation.", "We are 2,264 ahead of it, wider than our own seed spread of 849."),
+            ("That study used AutoGluon too,", "so the gap comes from how the training rows and the decision rule are built, not from the toolkit."),
+            ("Two deep-learning entries exist on this benchmark and both score worse,", "but none of the published work states its decision rule, so they are left out rather than compared on an unknown basis."),
         ],
         size=14,
-        gap=8,
+        gap=10,
     )
     slide = slide_of(deck, "Confidence", "Why this number is reportable", 7)
     bullets(
