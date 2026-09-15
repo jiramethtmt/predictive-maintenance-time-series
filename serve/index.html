@@ -1,0 +1,165 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Component X live inference</title>
+<style>
+  :root { --ink:#14243a; --mut:#5e6e82; --blue:#0055a0; --cyan:#00aae8; --line:#e2e9f1; --tint:#f4f7f9; --warn:#b5481e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 "Segoe UI",system-ui,sans-serif; color:var(--ink); background:#fff; }
+  header { background:var(--blue); color:#fff; padding:14px 24px; border-bottom:4px solid var(--cyan); }
+  header h1 { margin:0; font-size:18px; }
+  header span { font-size:12px; opacity:.85; }
+  main { display:grid; grid-template-columns:340px 1fr; gap:24px; padding:24px; align-items:start; }
+  @media (max-width:900px){ main { grid-template-columns:1fr; } }
+  .card { border:1px solid var(--line); border-radius:6px; padding:16px; margin-bottom:16px; }
+  .card h2 { margin:0 0 12px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--cyan); }
+  .stats { display:flex; flex-wrap:wrap; gap:18px; }
+  .stat b { display:block; font-size:22px; color:var(--blue); }
+  .stat span { font-size:11px; color:var(--mut); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; color:var(--mut); text-transform:uppercase; padding:4px 6px; }
+  td { padding:5px 6px; border-top:1px solid var(--line); }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:var(--tint); }
+  tr.on { background:#e6f1fa; }
+  .scroll { max-height:420px; overflow:auto; }
+  .bar { height:16px; background:var(--tint); border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--blue); }
+  .grid5 { display:grid; grid-template-columns:70px 1fr 74px; gap:6px 10px; align-items:center; font-size:12px; }
+  select, input, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:4px; }
+  button { background:var(--blue); color:#fff; border-color:var(--blue); cursor:pointer; }
+  button.ghost { background:#fff; color:var(--blue); }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .call { background:var(--blue); color:#fff; }
+  .hold { background:var(--tint); color:var(--mut); }
+  .risky { color:var(--warn); font-weight:600; }
+  .delta { font-size:12px; color:var(--mut); }
+  .delta b { color:var(--warn); }
+</style>
+<header>
+  <h1>Component X, live inference</h1>
+  <span>Every number below is a forward pass through the fitted AutoGluon predictor on macmini-2. Nothing is precomputed.</span>
+</header>
+<main>
+  <div>
+    <div class="card">
+      <h2>Fleet</h2>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="card">
+      <h2>Miss cost multiplier</h2>
+      <div class="row">
+        <input id="miss" type="range" min="1" max="12" step="0.5" value="2" style="flex:1">
+        <b id="missv">2.0x</b>
+      </div>
+      <p style="font-size:12px;color:var(--mut);margin:8px 0 0">Scales the penalty for missing a failure. The fitted value is 2.0x. Moving it re-decides the whole fleet.</p>
+    </div>
+    <div class="card">
+      <h2>Highest risk</h2>
+      <div class="scroll">
+        <table><thead><tr><th>Truck</th><th>Risk</th><th>True</th><th>Call</th></tr></thead><tbody id="list"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card" id="detail"><h2>Pick a truck</h2><p style="color:var(--mut)">Choose one on the left to score it.</p></div>
+    <div class="card" id="whatifcard" hidden>
+      <h2>What if</h2>
+      <p style="font-size:12px;color:var(--mut);margin:0 0 10px">Change a feature and re-run the model. This is a real forward pass, so the probabilities move for the reason you would expect.</p>
+      <div class="row">
+        <select id="feature" style="flex:1"></select>
+        <input id="value" type="number" step="any" style="width:130px">
+        <button id="run">Re-score</button>
+        <button id="reset" class="ghost">Reset</button>
+      </div>
+      <div id="whatif" style="margin-top:14px"></div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+let current = null, features = {}, baseline = null;
+
+const miss = () => parseFloat($('#miss').value);
+const fmt = n => n.toLocaleString();
+
+async function get(path) { const r = await fetch(path); if (!r.ok) throw new Error((await r.json()).error); return r.json(); }
+
+async function refresh() {
+  const [s, ranked] = await Promise.all([
+    get(`/api/summary?miss_scale=${miss()}`),
+    get(`/api/ranked?limit=60&miss_scale=${miss()}`),
+  ]);
+  const f = s.fleet;
+  $('#stats').innerHTML = [
+    [fmt(f.total_cost), 'total cost'],
+    [`${f.caught}/${f.at_risk}`, 'failures caught'],
+    [fmt(f.alerts), 'trucks called in'],
+    [fmt(f.split_size), 'trucks scored'],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  $('#list').innerHTML = ranked.map(r => `<tr data-id="${r.vehicle_id}"><td>${r.vehicle_id}</td>
+    <td>${(r.risk * 100).toFixed(1)}%</td>
+    <td class="${r.true_class > 0 ? 'risky' : ''}">${r.true_class}</td>
+    <td><span class="pill ${r.called ? 'call' : 'hold'}">${r.called ? 'call' : 'hold'}</span></td></tr>`).join('');
+  $('#list').querySelectorAll('tr').forEach(tr => tr.onclick = () => select(+tr.dataset.id));
+  if (current) markRow();
+}
+
+function markRow() {
+  $('#list').querySelectorAll('tr').forEach(tr => tr.classList.toggle('on', +tr.dataset.id === current));
+}
+
+function verdictHtml(v, title) {
+  const rows = v.probabilities.map((p, i) => `
+    <span>class ${i}</span>
+    <span class="bar"><i style="width:${(p * 100).toFixed(1)}%"></i></span>
+    <span>${(p * 100).toFixed(2)}%</span>`).join('');
+  const costs = v.expected_costs.map((c, i) => `${i}: ${c.toFixed(1)}`).join('  ');
+  return `<h2>${title}</h2>
+    <div class="grid5">${rows}</div>
+    <p style="margin:12px 0 4px;font-size:12px;color:var(--mut)">expected cost per action &nbsp; ${costs}</p>
+    <p style="margin:0"><b>Decision: ${v.action === 0 ? 'leave it running' : 'call it in (class ' + v.action + ')'}</b>
+    &nbsp; risk ${(v.risk * 100).toFixed(2)}%</p>`;
+}
+
+async function select(id) {
+  current = id; markRow();
+  const d = await get(`/api/vehicle/${id}?miss_scale=${miss()}`);
+  baseline = d.verdict; features = d.features;
+  $('#detail').innerHTML = verdictHtml(d.verdict, `Truck ${id} &nbsp; true class ${d.true_class}`);
+  const sel = $('#feature');
+  if (!sel.options.length) {
+    sel.innerHTML = Object.keys(features).map(k => `<option>${k}</option>`).join('');
+  }
+  $('#whatifcard').hidden = false;
+  $('#whatif').innerHTML = '';
+  syncValue();
+}
+
+function syncValue() {
+  const v = features[$('#feature').value];
+  $('#value').value = v === null || v === undefined ? '' : Number(v.toFixed(6));
+}
+
+$('#feature').onchange = syncValue;
+$('#miss').oninput = () => { $('#missv').textContent = miss().toFixed(1) + 'x'; };
+$('#miss').onchange = () => { refresh(); if (current) select(current); };
+$('#reset').onclick = () => { syncValue(); $('#whatif').innerHTML = ''; };
+
+$('#run').onclick = async () => {
+  const column = $('#feature').value, raw = $('#value').value;
+  if (raw === '') return;
+  const r = await fetch('/api/whatif', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vehicle_id: current, overrides: { [column]: parseFloat(raw) }, miss_scale: miss() }),
+  });
+  const v = await r.json();
+  if (v.error) { $('#whatif').innerHTML = `<p class="risky">${v.error}</p>`; return; }
+  const shift = (v.risk - baseline.risk) * 100;
+  $('#whatif').innerHTML = verdictHtml(v, `With ${column} = ${raw}`) +
+    `<p class="delta">risk moved <b>${shift >= 0 ? '+' : ''}${shift.toFixed(2)} points</b> against the stored reading,
+     decision ${v.action === baseline.action ? 'unchanged' : 'flipped from ' + baseline.action + ' to ' + v.action}</p>`;
+};
+
+refresh();
+</script>
