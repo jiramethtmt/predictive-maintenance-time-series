@@ -8,6 +8,10 @@ SK = os.environ.get(
 sys.path.insert(0, os.path.join(SK, "scripts"))
 sys.path.insert(0, os.path.join(SK, "helpers"))
 
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
+from pptx.util import Inches, Pt
+
 from deckkit import Deck, clear_text, para, font, PP_ALIGN, MSO_ANCHOR, RGBColor
 import tomastech_deck as HT
 
@@ -21,6 +25,67 @@ D = Deck(os.path.join(SK, "assets", "tomastech-template.pptx"), script_font="Seg
 HT.init(D)
 BLUE, CYAN, INK, MUT, NAVY, SURFACE, WHITE = HT.BLUE, HT.CYAN, HT.INK, HT.MUT, HT.NAVY, HT.SURFACE, HT.WHITE
 S = D.slides
+
+
+def style_chart(chart, colors, number_format="#,##0"):
+    chart.font.name = "Segoe UI"
+    chart.font.size = Pt(12)
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    labels = plot.data_labels
+    labels.number_format = number_format
+    labels.number_format_is_linked = False
+    labels.font.size = Pt(13)
+    labels.font.bold = True
+    for index, color in enumerate(colors):
+        point = plot.series[0].points[index]
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = color
+
+
+def benchmark_chart(s):
+    # BAR_CLUSTERED draws the first category at the bottom, so the rows are listed worst-first
+    # to make our result read at the top.
+    data = CategoryChartData()
+    data.categories = [
+        "Check every truck",
+        "XGBoost, the model they selected",
+        "CatBoost, their best test row",
+        "Our work",
+    ]
+    data.add_series("Test cost", (49671, 37733, 36724, 35469))
+    chart = s.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.7), Inches(1.75), Inches(11.9), Inches(3.75), data).chart
+    chart.has_title = False
+    chart.has_legend = False
+    lightmu = RGBColor(0xB7, 0xCB, 0xE1)
+    style_chart(chart, [lightmu, NAVY, lightmu, BLUE])
+    chart.plots[0].gap_width = 55
+    chart.value_axis.has_major_gridlines = False
+    chart.value_axis.visible = False
+
+
+def catch_charts(s):
+    caught = CategoryChartData()
+    caught.categories = ["Caught in time", "Missed"]
+    caught.add_series("At-risk trucks", (109, 33))
+    chart = s.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, Inches(0.7), Inches(1.95), Inches(5.65), Inches(3.9), caught).chart
+    chart.has_title = False
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    chart.legend.include_in_layout = False
+    style_chart(chart, [BLUE, NAVY])
+    chart.plots[0].data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
+
+    fleet = CategoryChartData()
+    fleet.categories = ["Called in", "Left running"]
+    fleet.add_series("Trucks", (2100, 2945))
+    chart = s.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, Inches(6.98), Inches(1.95), Inches(5.65), Inches(3.9), fleet).chart
+    chart.has_title = False
+    chart.has_legend = False
+    style_chart(chart, [BLUE, RGBColor(0xB7, 0xCB, 0xE1)])
+    chart.plots[0].gap_width = 60
+    chart.value_axis.has_major_gridlines = False
+    chart.value_axis.visible = False
 
 
 def drop_empty_placeholders(s):
@@ -87,33 +152,20 @@ cost_bar(s, 5.25, "Act on the most likely class", 56100, SURFACE, MUT)
 HT.txt(s, 0.7, 6.3, 11.9, 0.4, "Most-likely-class collapses onto doing nothing: at a 2.7% positive rate the likeliest class is always healthy.", 12, MUT)
 
 s = HT.content("What that buys the workshop", 5)
-HT.lead(s, "At the tuned operating point.", y=1.15)
-HT.split(s, [
-    "The catch rate",
-    "109 of 142 at-risk trucks",
-    "about 2,100 of 5,045 called in",
-    "33 trucks still missed",
-], y=2.4)
-for index, (head, body) in enumerate([
-    ("Where the saving comes from", "Not inspecting the other 2,900 trucks, while still reaching most of the ones that were going to fail."),
-    ("The price of certainty", "Checking all 5,045 catches every failure and costs 40% more than this model."),
-    ("The residual", "Those 33 missed trucks are the honest cost of the model today, and where further work pays."),
-]):
-    yy = 2.4 + index * 1.42
-    HT.blk(s, 5.65, yy, 6.95, 1.22, SURFACE)
-    HT.blk(s, 5.65, yy, 0.14, 1.22, CYAN)
-    HT.txt(s, 6.05, yy + 0.18, 6.2, 0.36, head, 15, INK, bold=True)
-    HT.txt(s, 6.05, yy + 0.58, 6.2, 0.6, body, 11.5, MUT, line=1.2)
-
+HT.lead(s, "At the tuned operating point, on the 5,045-truck test set.", y=1.15)
+catch_charts(s)
+HT.txt(s, 0.7, 5.95, 5.65, 0.4, "Of the 142 trucks that were going to fail", 12, MUT, align=PP_ALIGN.CENTER)
+HT.txt(s, 6.98, 5.95, 5.65, 0.4, "Of the whole fleet, who gets called in", 12, MUT, align=PP_ALIGN.CENTER)
+HT.blk(s, 0.7, 6.5, 11.9, 0.62, SURFACE)
+HT.blk(s, 0.7, 6.5, 0.14, 0.62, CYAN)
+HT.txt(s, 1.15, 6.63, 11.2, 0.4, "Checking all 5,045 would catch every failure and cost 40% more. The 33 missed trucks are where further work pays.", 12, INK)
 s = HT.content("Against the published results", 6)
-HT.lead(s, "Every result published on this benchmark, by total test cost.", y=1.1)
-HT.layered(s, [
-    ("Our work, 35,469 \u00b1 849", "AutoGluon LightGBM, cost-optimal decision rule, mean of three seeds"),
-    ("CatBoost, 36,724", "Same study's best test row, but not the model they selected"),
-    ("XGBoost, 37,733", "The model the leading study selected. They used AutoGluon too, so the gap is protocol, not toolkit."),
-    ("Check every truck, 49,671", "The trivial baseline, level with Carpentier et al."),
-], y0=1.75)
-
+HT.lead(s, "Every result published on this benchmark, by total test cost. Lower is better.", y=1.15)
+benchmark_chart(s)
+HT.blk(s, 0.7, 5.75, 11.9, 1.25, SURFACE)
+HT.blk(s, 0.7, 5.75, 0.14, 1.25, CYAN)
+HT.txt(s, 1.15, 5.95, 11.2, 0.35, "The target is 37,733, the model the leading study selected on validation. We are 2,264 ahead of it, wider than our own seed spread of 849.", 12, INK)
+HT.txt(s, 1.15, 6.42, 11.2, 0.35, "They used AutoGluon too, so the gap comes from the training rows and the decision rule, not the toolkit.", 12, MUT)
 s = HT.content("Why the number is reportable", 7)
 HT.headline(s, "Protocol before result.", y=1.1, size=32, color=INK)
 HT.timeline(s, [
