@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from scania.dataset import evaluation_set, training_cut_points  # noqa: E402
 from scania.decision import tune_miss_scale  # noqa: E402
 from scania.model import build_classifier, predict_all_classes, training_matrix  # noqa: E402
-from scania.report import summarise, write_web_payload  # noqa: E402
+from scania.report import summarise, write_scoring_payload  # noqa: E402
 from scania.schema import VEHICLE_ID  # noqa: E402
 
 
@@ -36,7 +36,7 @@ def main() -> int:
         summary = summarise(name, evaluation.truth, probabilities, miss_scale)
         print(f"{name}: cost {summary['total_cost']}  recall {summary['recall']}  {summary['baselines']}")
 
-    target = write_web_payload("HistGradientBoosting", miss_scale, splits)
+    target = write_scoring_payload("HistGradientBoosting", miss_scale, splits)
     print(f"wrote {target} ({target.stat().st_size / 1e6:.2f} MB)")
     return 0
 

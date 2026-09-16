@@ -35,7 +35,7 @@ To regenerate and execute from the script:
 .venv/Scripts/jupyter nbconvert --to notebook --execute --inplace notebooks/01_eda_scania_component_x.ipynb
 ```
 
-## Model and web console
+## Model and scoring
 
 The headline model is AutoGluon over LightGBM, trained on macmini-2 in the container (see
 `docker/`). Training cut points and the validation rows are pooled into one table;
@@ -45,8 +45,7 @@ rule is tuned on. Test is scored once at the end.
 
 ```bash
 docker/run-seeds.sh --only GBM --time-limit 900      # on macmini-2: three seeds, mean and spread
-.venv/Scripts/python scripts/build_web.py            # inlines web/data.json into web/index.html
-.venv/Scripts/python -m http.server 8777 --directory web
+docker/run-serve.sh 8800                             # on macmini-2: live scoring and what-if over HTTP
 ```
 
 Features are taken at a cut point: counter wear rates over 3/10/20-readout windows plus
@@ -74,8 +73,8 @@ tuning on out-of-fold predictions halved that to 849. `scripts/measure_noise.py`
 measurement.
 
 Argmax collapses onto the do-nothing policy: at a 2.7% positive rate the likeliest class is
-essentially always 0, so a model scored that way never raises an alarm. The web console lets
-you rescale the cost matrix and switch rules to watch that happen.
+essentially always 0, so a model scored that way never raises an alarm. The scoring service lets
+you rescale the cost matrix and re-decide the fleet to watch that happen.
 
 Recall at the tuned point is 0.72 on test, at a precision around 0.05. That precision is
 correct, not broken: a missed class-4 truck costs 500 and a wasted workshop check costs 10, so

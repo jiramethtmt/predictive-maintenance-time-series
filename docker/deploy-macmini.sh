@@ -11,7 +11,7 @@ ssh "$HOST" "mkdir -p $REMOTE_DIR/data/raw $REMOTE_DIR/data/cache"
 
 rsync -az --delete \
   --exclude '.venv' --exclude '.git' --exclude 'data' --exclude 'models' \
-  --exclude '__pycache__' --exclude 'web/data.json' --exclude 'web/index.html' \
+  --exclude '__pycache__' --exclude 'results' \
   "$LOCAL_DIR/" "$HOST:$REMOTE_DIR/"
 
 # The raw readout CSVs are 1.6 GB and are only ever read once to build the parquet cache, so the

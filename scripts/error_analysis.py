@@ -32,7 +32,7 @@ def prior_table() -> pd.DataFrame:
 
 
 def per_class_recall() -> pd.DataFrame | None:
-    payload_path = ROOT / "web" / "data.json"
+    payload_path = ROOT / "results" / "scoring.json"
     if not payload_path.exists():
         return None
     payload = json.loads(payload_path.read_text(encoding="utf-8"))

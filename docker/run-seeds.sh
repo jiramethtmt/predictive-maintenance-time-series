@@ -15,7 +15,7 @@ for seed in $SEEDS; do
   docker run --rm \
     -v "$ROOT/data:/app/data" \
     -v "$ROOT/models:/app/models" \
-    -v "$ROOT/web:/app/web" \
+    -v "$ROOT/results:/app/results" \
     --cpus 8 --memory 11g \
     scania-train --seed "$seed" "${shift_args[@]}" 2>&1 | tee -a "$LOG" | grep -E "^pool rows|miss scale|^test:|^wrote"
 done

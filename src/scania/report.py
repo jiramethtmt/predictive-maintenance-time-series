@@ -12,7 +12,7 @@ from .decision import minimum_cost_decision, scaled_cost_matrix
 from .io import load_split
 from .schema import COST_MATRIX, COUNTERS, TIME_STEP, VEHICLE_ID
 
-WEB_DATA = Path(__file__).resolve().parents[2] / "web" / "data.json"
+SCORING_PAYLOAD = Path(__file__).resolve().parents[2] / "results" / "scoring.json"
 TRAJECTORY_VEHICLES_PER_CLASS = 12
 TRAJECTORY_COUNTERS = ("171_0", "427_0", "835_0", "100_0")
 
@@ -82,7 +82,7 @@ def _vehicle_records(test: EvaluationSet, probabilities: np.ndarray) -> list[dic
     ]
 
 
-def write_web_payload(
+def write_scoring_payload(
     model_name: str,
     miss_scale: float,
     splits: dict[str, tuple[EvaluationSet, np.ndarray]],
@@ -100,7 +100,7 @@ def write_web_payload(
 
     test, test_probabilities = splits["test"]
     records = _vehicle_records(test, test_probabilities)
-    # The explorer stores raw histories for the highest-risk trucks of each true class, so every
+    # The payload keeps raw histories for the highest-risk trucks of each true class, so every
     # class has an inspectable example rather than only the ones the model happened to flag.
     by_class: dict[int, list[int]] = {k: [] for k in range(5)}
     for record in sorted(records, key=lambda r: -max(r["p"][1:])):
@@ -114,6 +114,6 @@ def write_web_payload(
         "trajectories": _trajectories([vid for bucket in by_class.values() for vid in bucket]),
         "counters": list(COUNTERS),
     }
-    WEB_DATA.parent.mkdir(parents=True, exist_ok=True)
-    WEB_DATA.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-    return WEB_DATA
+    SCORING_PAYLOAD.parent.mkdir(parents=True, exist_ok=True)
+    SCORING_PAYLOAD.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    return SCORING_PAYLOAD

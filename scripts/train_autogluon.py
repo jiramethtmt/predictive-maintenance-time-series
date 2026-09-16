@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from scania.dataset import LABEL, evaluation_set, labelled_frame, training_cut_points  # noqa: E402
 from scania.decision import tune_miss_scale  # noqa: E402
 from scania.ensemble import FOLD, assign_folds, fit_predictor, predict_all_classes  # noqa: E402
-from scania.report import summarise, write_web_payload  # noqa: E402
+from scania.report import summarise, write_scoring_payload  # noqa: E402
 from scania.schema import VEHICLE_ID  # noqa: E402
 
 
@@ -61,7 +61,7 @@ def main() -> int:
         "validation": (validation, predict_all_classes(predictor, validation.cut.drop(columns=[VEHICLE_ID]))),
         "test": (test, probabilities),
     }
-    target = write_web_payload("AutoGluon", miss_scale, splits)
+    target = write_scoring_payload("AutoGluon", miss_scale, splits)
     print(f"wrote {target} ({target.stat().st_size / 1e6:.2f} MB)")
     return 0
 

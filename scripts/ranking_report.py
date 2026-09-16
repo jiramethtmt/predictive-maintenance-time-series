@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    payload = json.loads((ROOT / "web" / "data.json").read_text(encoding="utf-8"))
+    payload = json.loads((ROOT / "results" / "scoring.json").read_text(encoding="utf-8"))
     vehicles = payload["vehicles"]
     risk = np.array([1 - v["p"][0] for v in vehicles])
     at_risk = np.array([v["y"] > 0 for v in vehicles])
